@@ -1,0 +1,76 @@
+[project]
+name = "kiwitcms-requirements"
+version = "0.2.0"
+description = "Requirements management and traceability plugin for Kiwi TCMS: registry of requirements, M2M trace to test cases, Sankey traceability, coverage dashboard with charts, JIRA-ready CSV export, XLSX/DOCX/PDF reports, ASPICE / ISO 9001 support."
+readme = "README.md"
+license = "GPL-2.0-or-later"
+requires-python = ">=3.9"
+dependencies = [
+    "Django>=4.2",
+    "django-simple-history>=3.0",
+    "django-modern-rpc>=1.0",
+    "markdown>=3.0",
+    "requests>=2.28",
+    "openpyxl>=3.1",
+    "python-docx>=1.1",
+    "reportlab>=4.0",
+    "svglib>=1.5",
+    "Pillow>=10.0",
+]
+authors = [{ name = "Achmad Fienan Rahardianto", email = "veenone@gmail.com" }]
+classifiers = [
+    "Framework :: Django",
+    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.0",
+    "Framework :: Django :: 5.2",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Manufacturing",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
+keywords = [
+    "tcms", "kiwi", "plugin",
+    "requirements", "traceability", "rtm",
+    "aspice", "iso9001", "iso26262",
+    "jira", "testing", "quality",
+]
+
+[project.optional-dependencies]
+diagram = ["networkx>=3.0"]
+dev = [
+    "build>=1.0",
+    "twine>=4.0",
+    "factory-boy>=3.0",
+    "pytest>=7.0",
+    "pytest-django>=4.5",
+]
+
+[project.entry-points."kiwitcms.plugins"]
+requirements = "tcms_requirements"
+
+[project.urls]
+Homepage = "https://github.com/veenone/kiwi-tcms-requirements"
+Repository = "https://github.com/veenone/kiwi-tcms-requirements"
+Issues = "https://github.com/veenone/kiwi-tcms-requirements/issues"
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["tcms_requirements*"]
+
+[tool.setuptools.package-data]
+tcms_requirements = [
+    "templates/**/*.html",
+    "templates/**/*.txt",
+    "static/**/*",
+    "migrations/*.py",
+]

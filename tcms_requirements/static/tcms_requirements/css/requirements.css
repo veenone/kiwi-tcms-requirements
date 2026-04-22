@@ -1,0 +1,197 @@
+/* kiwitcms-requirements plugin styles. Lives alongside Kiwi's PatternFly
+   stylesheet and mirrors the cadence of tcms_review/css/review.css. */
+
+#requirements-list .requirements-filters,
+#requirements-detail .requirements-section,
+#requirements-dashboard .panel {
+    margin-bottom: 16px;
+}
+
+.requirements-filters .form-group {
+    margin-bottom: 8px;
+}
+
+.requirements-filters input[type="text"],
+.requirements-filters select {
+    min-width: 140px;
+}
+
+.requirements-table .label,
+.requirements-links-table .label,
+.requirements-history-table .label {
+    font-size: 12px;
+    padding: 3px 10px;
+    line-height: 1.4;
+    border-radius: 10em;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+.requirements-section {
+    border: 1px solid #ededed;
+    border-radius: 4px;
+    padding: 16px 20px;
+    background: #fff;
+}
+
+.requirements-section h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-weight: 400;
+    color: #292e34;
+}
+
+.requirements-blank-slate {
+    text-align: center;
+    padding: 36px 12px;
+    color: #72767b;
+}
+
+.requirements-blank-slate .pficon,
+.requirements-blank-slate .fa {
+    font-size: 48px;
+    color: #bbbbbb;
+    margin-bottom: 12px;
+}
+
+.requirements-markdown {
+    white-space: pre-wrap;
+}
+
+.requirements-meta dl dt {
+    color: #72767b;
+    font-weight: 500;
+}
+
+.requirements-meta dl dd {
+    margin-bottom: 6px;
+}
+
+/* Page-header toolbar with multiple button groups (list view). */
+.requirements-toolbar h1 {
+    display: inline-block;
+}
+
+.requirements-toolbar-actions {
+    margin-top: 4px;
+}
+
+.requirements-toolbar-actions .btn-group {
+    margin-left: 6px;
+}
+
+/* Form fieldsets — group fields by concern with subtle dividers. */
+.requirements-form .requirements-fieldset {
+    border: 1px solid #ededed;
+    border-radius: 3px;
+    padding: 14px 18px 4px;
+    margin-bottom: 16px;
+    background: #fafafa;
+}
+
+.requirements-form .requirements-fieldset > legend {
+    width: auto;
+    padding: 0 10px;
+    border: none;
+    margin: 0;
+    font-size: 14px;
+    color: #39a5dc;
+    font-weight: 600;
+}
+
+.requirements-form .requirements-fieldset.collapsible > legend a {
+    color: #39a5dc;
+    text-decoration: none;
+}
+
+.requirements-form .requirements-fieldset.collapsible > legend a:hover {
+    text-decoration: underline;
+}
+
+.requirements-form .requirements-fieldset .form-control {
+    min-width: 220px;
+}
+
+/* Link picker — TestCase browser modal on /link/ page. */
+.link-picker-results {
+    max-height: 360px;
+    overflow-y: auto;
+    border: 1px solid #ededed;
+    border-radius: 3px;
+}
+
+.link-picker-table tbody tr:hover {
+    background: #eef6fc;
+}
+
+.link-picker-selected {
+    padding: 10px 14px;
+    background: #fff;
+    border: 1px dashed #ededed;
+    border-radius: 3px;
+    min-height: 48px;
+}
+
+/* Sankey traceability diagram container. */
+#requirements-sankey-wrap {
+    background: #fff;
+    border: 1px solid #ededed;
+    border-radius: 3px;
+    padding: 12px;
+    overflow-x: auto;
+}
+
+#requirements-sankey text {
+    fill: #292e34;
+    pointer-events: none;
+}
+
+#requirements-sankey-status {
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+/* Dashboard charts — C3 default look is already clean; just size them. */
+#chart-by-status, #chart-by-priority,
+#chart-by-level, #chart-by-category,
+#chart-safety {
+    min-height: 260px;
+}
+
+/* TestCase detail page injection — the "Requirements" card added by
+   inject.js. Stays out of the way until the JS decides to render it. */
+.tcmsreq-injected-card {
+    border: 1px solid #ededed;
+    border-radius: 4px;
+    background: #fafafa;
+    padding: 14px 18px;
+    margin: 16px 0;
+}
+
+.tcmsreq-injected-card h3 {
+    margin-top: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #292e34;
+}
+
+.tcmsreq-injected-card .tcmsreq-link-list {
+    list-style: none;
+    padding: 0;
+    margin: 6px 0 0;
+}
+
+.tcmsreq-injected-card .tcmsreq-link-list li {
+    padding: 4px 0;
+    border-top: 1px dashed #ededed;
+}
+
+.tcmsreq-injected-card .tcmsreq-link-list li:first-child {
+    border-top: none;
+}
+
+.tcmsreq-injected-card .tcmsreq-suspect {
+    color: #cc0000;
+    font-weight: 600;
+    margin-left: 6px;
+}

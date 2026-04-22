@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Delete" %} {{ requirement.identifier }}{% endblock %}
+
+{% block contents %}
+<div class="container-fluid">
+  <div class="page-header">
+    <h1>{% trans "Delete requirement" %}: <code>{{ requirement.identifier }}</code></h1>
+  </div>
+  <p>{% trans "This will permanently delete the requirement along with its links to test cases. Consider setting status to 'deprecated' instead." %}</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">
+      <i class="fa fa-trash"></i> {% trans "Delete permanently" %}
+    </button>
+    <a href="{% url 'requirement-get' requirement.pk %}" class="btn btn-default">{% trans "Cancel" %}</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Requirements dashboard" %}{% endblock %}
+
+{% block contents %}
+<div class="container-fluid" id="requirements-dashboard">
+  <div class="page-header">
+    <h1>
+      {% trans "Requirements dashboard" %}
+      <div class="btn-group pull-right">
+        <a href="{% url 'requirement-dashboard-export' 'docx' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+           class="btn btn-default">
+          <i class="fa fa-file-word-o"></i> DOCX
+        </a>
+        <a href="{% url 'requirement-dashboard-export' 'pdf' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+           class="btn btn-default">
+          <i class="fa fa-file-pdf-o"></i> PDF
+        </a>
+        <a href="{% url 'requirement-traceability' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+           class="btn btn-primary">
+          <i class="fa fa-sitemap"></i> {% trans "Traceability" %}
+        </a>
+      </div>
+    </h1>
+  </div>
+
+  <form method="get" class="form-inline requirements-filters" style="margin-bottom:12px;">
+    <div class="form-group">
+      <label for="product">{% trans "Product" %}</label>
+      <select name="product" id="product" class="form-control">
+        <option value="">{% trans "— any —" %}</option>
+        {% for id, label in products %}
+          <option value="{{ id }}" {% if filter_values.product == id %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="project">{% trans "Project" %}</label>
+      <select name="project" id="project" class="form-control">
+        <option value="">{% trans "— any —" %}</option>
+        {% for id, label in projects %}
+          <option value="{{ id }}" {% if filter_values.project == id %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="feature">{% trans "Feature" %}</label>
+      <select name="feature" id="feature" class="form-control">
+        <option value="">{% trans "— any —" %}</option>
+        {% for id, label in features %}
+          <option value="{{ id }}" {% if filter_values.feature == id %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">{% trans "Apply" %}</button>
+    <a href="{% url 'requirement-dashboard' %}" class="btn btn-link">{% trans "Reset" %}</a>
+  </form>
+
+  <div class="row">
+    <div class="col-md-3">
+      <div class="panel panel-default">
+        <div class="panel-heading">{% trans "Total requirements" %}</div>
+        <div class="panel-body"><h2>{{ snapshot.total }}</h2></div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="panel panel-success">
+        <div class="panel-heading">{% trans "Coverage" %}</div>
+        <div class="panel-body">
+          <h2>{{ snapshot.coverage.percent }} %</h2>
+          <small>{{ snapshot.coverage.linked }} / {{ snapshot.coverage.total }}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="panel panel-danger">
+        <div class="panel-heading">{% trans "Orphan requirements" %}</div>
+        <div class="panel-body">
+          <h2>{{ snapshot.orphan_requirements }}</h2>
+          <small>{% trans "no linked test case" %}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="panel panel-warning">
+        <div class="panel-heading">{% trans "Suspect links" %}</div>
+        <div class="panel-body">
+          <h2>{{ snapshot.suspect_link_count }}</h2>
+          <small>{% trans "need reviewer confirmation" %}</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>{% trans "By status" %}</strong></div>
+        <div class="panel-body">
+          <div id="chart-by-status"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>{% trans "By priority" %}</strong></div>
+        <div class="panel-body">
+          <div id="chart-by-priority"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>{% trans "By level" %}</strong></div>
+        <div class="panel-body">
+          <div id="chart-by-level"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>{% trans "By category" %}</strong></div>
+        <div class="panel-body">
+          <div id="chart-by-category"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if snapshot.safety.asil or snapshot.safety.dal or snapshot.safety.iec62304_class %}
+  <div class="row">
+    <div class="col-md-12">
+      <div class="panel panel-danger">
+        <div class="panel-heading"><strong>{% trans "Safety / criticality distribution" %}</strong></div>
+        <div class="panel-body">
+          <div id="chart-safety"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <script type="application/json" id="requirements-dashboard-data">{{ snapshot_json|safe }}</script>
+</div>
+
+<link rel="stylesheet" href="{% static 'tcms_requirements/vendor/c3.min.css' %}">
+<link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">
+<script src="{% static 'tcms_requirements/vendor/d3.v3.min.js' %}"></script>
+<script src="{% static 'tcms_requirements/vendor/c3.min.js' %}"></script>
+<script src="{% static 'tcms_requirements/js/dashboard.js' %}"></script>
+{% endblock %}

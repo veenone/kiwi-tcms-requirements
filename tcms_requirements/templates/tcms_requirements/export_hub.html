@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Export requirements" %}{% endblock %}
+
+{% block contents %}
+<div class="container-fluid" id="requirements-export-hub">
+  <div class="page-header">
+    <h1>{% trans "Export requirements" %}</h1>
+  </div>
+
+  <div class="row">
+    <div class="col-md-4">
+      <div class="panel panel-primary">
+        <div class="panel-heading"><strong>{% trans "JIRA-import CSV" %}</strong></div>
+        <div class="panel-body">
+          <p>{% trans "JIRA-native column names so the file loads via External System Import without manual field mapping." %}</p>
+          <a href="{% url 'requirement-export' 'jira-csv' %}" class="btn btn-primary">
+            <i class="fa fa-download"></i> {% trans "Download JIRA CSV" %}
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>{% trans "Generic CSV" %}</strong></div>
+        <div class="panel-body">
+          <p>{% trans "Flat dump of every field. Round-trips with the importer." %}</p>
+          <a href="{% url 'requirement-export' 'csv' %}" class="btn btn-default">
+            <i class="fa fa-download"></i> {% trans "Download CSV" %}
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>{% trans "JSON" %}</strong></div>
+        <div class="panel-body">
+          <p>{% trans "Open-schema dump including external_refs and link graph. Scripts / other ALM tools." %}</p>
+          <a href="{% url 'requirement-export' 'json' %}" class="btn btn-default">
+            <i class="fa fa-download"></i> {% trans "Download JSON" %}
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="text-muted">
+    <small>
+      {% blocktrans %}
+      Tip: append query-string filters (e.g. <code>?product=1&amp;status=approved</code>)
+      to the download URL to scope the export. The same filters work on the list view.
+      {% endblocktrans %}
+    </small>
+  </p>
+</div>
+
+<link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">
+{% endblock %}

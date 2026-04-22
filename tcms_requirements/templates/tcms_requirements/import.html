@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Import requirements" %}{% endblock %}
+
+{% block contents %}
+<div class="container-fluid" id="requirements-import">
+  <div class="page-header">
+    <h1>{% trans "Import requirements (CSV)" %}</h1>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="form-group {% if field.errors %}has-error{% endif %}">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}
+            <span class="help-block"><small>{{ field.help_text }}</small></span>
+          {% endif %}
+          {% if field.errors %}
+            <span class="help-block text-danger">{{ field.errors }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">
+          <i class="fa fa-upload"></i> {% trans "Upload" %}
+        </button>
+        <a href="{% url 'requirement-list' %}" class="btn btn-link">{% trans "Cancel" %}</a>
+      </form>
+    </div>
+
+    <div class="col-md-6">
+      <div class="panel panel-primary">
+        <div class="panel-heading"><strong>{% trans "Download a template" %}</strong></div>
+        <div class="panel-body">
+          <p>{% blocktrans %}Headers + three sample rows so you can see the exact column shape. Fill in your own rows and upload.{% endblocktrans %}</p>
+          <a href="{% url 'requirement-import-template' 'xlsx' %}" class="btn btn-primary">
+            <i class="fa fa-file-excel-o"></i> {% trans "Download XLSX template" %}
+          </a>
+          <a href="{% url 'requirement-import-template' 'csv' %}" class="btn btn-default">
+            <i class="fa fa-file-text-o"></i> {% trans "Download CSV template" %}
+          </a>
+        </div>
+      </div>
+
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>{% trans "Accepted columns" %}</strong></div>
+        <div class="panel-body">
+          <p>{% trans "Required columns:" %} <code>identifier</code>, <code>title</code>.</p>
+          <p>{% trans "Optional columns (all free-text or FK names):" %}</p>
+          <code style="white-space:normal;">
+            description, rationale, category, source, source_section, level,
+            product, project, feature, parent_requirement, status, priority,
+            verification_method, asil, dal, iec62304_class, doc_id,
+            doc_revision, effective_date, change_reason, jira_issue_key,
+            external_refs (JSON).
+          </code>
+          <p><small>{% trans "FK values resolve by human-friendly names: category name, level code, requirement identifier for parent, etc." %}</small></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if import_result %}
+  <div class="page-header">
+    <h2>
+      {% if dry_run_used %}{% trans "Dry-run result" %}{% else %}{% trans "Import result" %}{% endif %}
+    </h2>
+  </div>
+
+  <div class="row">
+    <div class="col-md-3">
+      <div class="panel panel-default">
+        <div class="panel-heading">{% trans "Total rows" %}</div>
+        <div class="panel-body"><h2>{{ import_result.rows_total }}</h2></div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="panel panel-success">
+        <div class="panel-heading">{% trans "Valid" %}</div>
+        <div class="panel-body"><h2>{{ import_result.rows_ok }}</h2></div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="panel panel-primary">
+        <div class="panel-heading">{% trans "Created / Updated" %}</div>
+        <div class="panel-body">
+          <h2>{{ import_result.rows_created }} / {{ import_result.rows_updated }}</h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="panel panel-danger">
+        <div class="panel-heading">{% trans "Errors" %}</div>
+        <div class="panel-body"><h2>{{ import_result.errors|length }}</h2></div>
+      </div>
+    </div>
+  </div>
+
+  {% if import_result.errors %}
+  <div class="panel panel-danger">
+    <div class="panel-heading"><strong>{% trans "Error detail" %}</strong></div>
+    <table class="table table-condensed">
+      <thead>
+        <tr>
+          <th>{% trans "Row" %}</th>
+          <th>{% trans "Identifier" %}</th>
+          <th>{% trans "Error" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for err in import_result.errors %}
+        <tr>
+          <td>{{ err.row_num }}</td>
+          <td><code>{{ err.identifier }}</code></td>
+          <td>{{ err.message }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if dry_run_used and import_result.rows_ok %}
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <p class="text-muted">
+      <em>{% trans "To commit the rows above, re-submit the same CSV with 'Dry run' unchecked." %}</em>
+    </p>
+  </form>
+  {% endif %}
+  {% endif %}
+</div>
+
+<link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">
+{% endblock %}

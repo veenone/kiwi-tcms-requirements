@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}
+{% if form.instance.pk %}{% trans "Edit requirement" %}: {{ form.instance.identifier }}{% else %}{% trans "New requirement" %}{% endif %}
+{% endblock %}
+
+{% block contents %}
+<div class="container-fluid" id="requirements-mutable">
+  <div class="page-header">
+    <h1>
+      {% if form.instance.pk %}
+        {% trans "Edit requirement" %}: <code>{{ form.instance.identifier }}</code>
+      {% else %}
+        {% trans "New requirement" %}
+      {% endif %}
+    </h1>
+  </div>
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <form method="post" class="form-horizontal requirements-form">
+    {% csrf_token %}
+
+    <fieldset class="requirements-fieldset">
+      <legend>{% trans "Identity" %}</legend>
+      {% for name in "identifier title description rationale"|cut:""|slice:":0" %}{% endfor %}
+      {% include "tcms_requirements/_field.html" with field=form.identifier %}
+      {% include "tcms_requirements/_field.html" with field=form.title %}
+      {% include "tcms_requirements/_field.html" with field=form.description %}
+      {% include "tcms_requirements/_field.html" with field=form.rationale %}
+    </fieldset>
+
+    <fieldset class="requirements-fieldset">
+      <legend>{% trans "Taxonomy" %}</legend>
+      {% include "tcms_requirements/_field.html" with field=form.category %}
+      {% include "tcms_requirements/_field.html" with field=form.source %}
+      {% include "tcms_requirements/_field.html" with field=form.source_section %}
+      {% include "tcms_requirements/_field.html" with field=form.level %}
+    </fieldset>
+
+    <fieldset class="requirements-fieldset">
+      <legend>{% trans "Organisation" %}</legend>
+      {% include "tcms_requirements/_field.html" with field=form.product %}
+      {% include "tcms_requirements/_field.html" with field=form.project %}
+      {% include "tcms_requirements/_field.html" with field=form.feature %}
+      {% include "tcms_requirements/_field.html" with field=form.parent_requirement %}
+    </fieldset>
+
+    <fieldset class="requirements-fieldset">
+      <legend>{% trans "Lifecycle" %}</legend>
+      {% include "tcms_requirements/_field.html" with field=form.status %}
+      {% include "tcms_requirements/_field.html" with field=form.priority %}
+      {% include "tcms_requirements/_field.html" with field=form.verification_method %}
+      {% include "tcms_requirements/_field.html" with field=form.verification_exemption_reason %}
+    </fieldset>
+
+    <fieldset class="requirements-fieldset collapsible">
+      <legend>
+        <a data-toggle="collapse" href="#fs-safety">
+          {% trans "Safety / criticality" %} <small>(optional)</small>
+        </a>
+      </legend>
+      <div id="fs-safety" class="collapse">
+        {% include "tcms_requirements/_field.html" with field=form.asil %}
+        {% include "tcms_requirements/_field.html" with field=form.sil %}
+        {% include "tcms_requirements/_field.html" with field=form.iec62304_class %}
+        {% include "tcms_requirements/_field.html" with field=form.dal %}
+      </div>
+    </fieldset>
+
+    <fieldset class="requirements-fieldset collapsible">
+      <legend>
+        <a data-toggle="collapse" href="#fs-doc-control">
+          {% trans "Document control (ISO 9001 §7.5)" %}
+        </a>
+      </legend>
+      <div id="fs-doc-control" class="collapse">
+        {% include "tcms_requirements/_field.html" with field=form.doc_id %}
+        {% include "tcms_requirements/_field.html" with field=form.doc_revision %}
+        {% include "tcms_requirements/_field.html" with field=form.effective_date %}
+        {% include "tcms_requirements/_field.html" with field=form.superseded_by %}
+        {% include "tcms_requirements/_field.html" with field=form.change_reason %}
+      </div>
+    </fieldset>
+
+    <fieldset class="requirements-fieldset collapsible">
+      <legend>
+        <a data-toggle="collapse" href="#fs-external">
+          {% trans "External system keys" %}
+        </a>
+      </legend>
+      <div id="fs-external" class="collapse">
+        {% include "tcms_requirements/_field.html" with field=form.jira_issue_key %}
+      </div>
+    </fieldset>
+
+    <div class="form-group">
+      <div class="col-sm-offset-3 col-sm-8">
+        <button type="submit" class="btn btn-primary">
+          <i class="fa fa-save"></i> {% trans "Save" %}
+        </button>
+        <a href="{% if form.instance.pk %}{% url 'requirement-get' form.instance.pk %}{% else %}{% url 'requirement-list' %}{% endif %}"
+           class="btn btn-default">{% trans "Cancel" %}</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load i18n static requirements_extras %}
+
+{% block title %}{% trans "Link test case" %} — {{ requirement.identifier }}{% endblock %}
+
+{% block contents %}
+<div class="container-fluid" id="requirements-link">
+  <div class="page-header">
+    <h1>
+      {% trans "Link test case" %}
+      <small><code>{{ requirement.identifier }}</code> — {{ requirement.title }}</small>
+      <a href="{% url 'requirement-get' requirement.pk %}" class="btn btn-default pull-right">
+        <i class="fa fa-arrow-left"></i> {% trans "Back" %}
+      </a>
+    </h1>
+  </div>
+
+  <div class="row">
+    <div class="col-md-7">
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>{% trans "Select a test case" %}</strong></div>
+        <div class="panel-body">
+          <p class="text-muted">
+            <small>
+              {% blocktrans %}Type a summary keyword, a TC id, or the author's username.
+              Click a row to select. Empty query shows the 50 most recent cases.{% endblocktrans %}
+            </small>
+          </p>
+          <div class="form-group">
+            <label for="link-picker-query" class="sr-only">{% trans "Search test cases" %}</label>
+            <input type="search"
+                   id="link-picker-query"
+                   class="form-control"
+                   placeholder="{% trans 'Search TC id or summary...' %}"
+                   autocomplete="off">
+          </div>
+          <div id="link-picker-results" class="link-picker-results"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-5">
+      <form method="post" id="link-form">
+        {% csrf_token %}
+        <div class="panel panel-primary">
+          <div class="panel-heading"><strong>{% trans "Selected" %}</strong></div>
+          <div class="panel-body">
+            <div id="link-picker-selected" class="link-picker-selected">
+              <em class="text-muted">{% trans "No test case selected yet." %}</em>
+            </div>
+            {{ form.case_id }}
+            {% if form.case_id.errors %}
+              <span class="help-block text-danger">{{ form.case_id.errors }}</span>
+            {% endif %}
+
+            <div class="form-group" style="margin-top:16px;">
+              <label for="{{ form.link_type.id_for_label }}">{{ form.link_type.label }}</label>
+              {{ form.link_type }}
+            </div>
+            <div class="form-group">
+              <label for="{{ form.coverage_notes.id_for_label }}">{{ form.coverage_notes.label }}</label>
+              {{ form.coverage_notes }}
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="link-submit" disabled>
+              <i class="fa fa-link"></i> {% trans "Link" %}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading"><strong>{% trans "Existing links" %}</strong></div>
+    <div class="panel-body">
+      {% if case_links %}
+      <table class="table table-condensed">
+        <thead>
+          <tr>
+            <th>{% trans "Case" %}</th>
+            <th>{% trans "Type" %}</th>
+            <th>{% trans "Suspect" %}</th>
+            <th>{% trans "Added" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for link in case_links %}
+          <tr>
+            <td><a href="/case/{{ link.case_id }}/">TC-{{ link.case_id }}</a></td>
+            <td>{% link_type_icon link.link_type %}</td>
+            <td>{% suspect_badge link.suspect %}</td>
+            <td><small>{{ link.created_at|date:"Y-m-d H:i" }}</small></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-muted">{% trans "No links yet." %}</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">
+<script src="{% static 'tcms_requirements/js/link_picker.js' %}"></script>
+{% endblock %}
