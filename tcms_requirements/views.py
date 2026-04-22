@@ -456,55 +456,65 @@ def _filter_options(kind):
 class RequirementTraceabilityExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
     """Export the traceability view as DOCX or PDF.
 
-    POST is used so the client can submit the rendered SVG payload. Query
-    string still carries filters for the backend row set (dependent on
-    how the user scoped the diagram, not the SVG contents).
+    Accepts both GET (table-only, no diagram) and POST (client submits the
+    rendered SVG payload in `svg`). GET is handy for direct-URL debugging
+    and for teams that just want the row table without the Sankey image.
     """
     permission_required = "tcms_requirements.view_requirement"
 
     def post(self, request, fmt):
-        from tcms_requirements.traceability.diagram import _case_to_plans  # noqa: WPS433
-        from tcms_requirements.traceability.report import (  # noqa: WPS433
-            flatten_traceability,
-            svg_to_png_bytes,
-            svg_to_rlg,
-        )
+        return self._export(request, fmt, request.POST)
 
-        filters = _parse_dashboard_filters(request.POST)
-        svg_blob = request.POST.get("svg", "") or ""
+    def get(self, request, fmt):
+        return self._export(request, fmt, request.GET)
 
-        qs = (
-            Requirement.objects
-            .select_related("level")
-            .prefetch_related("case_links__case")
-            .order_by("identifier")
-        )
-        if filters.get("product"):
-            qs = qs.filter(product_id=filters["product"])
-        if filters.get("project"):
-            qs = qs.filter(project_id=filters["project"])
-        if filters.get("feature"):
-            qs = qs.filter(feature_id=filters["feature"])
+    def _export(self, request, fmt, params):
+        if fmt not in {"docx", "pdf"}:
+            return HttpResponseBadRequest("Format must be 'docx' or 'pdf'.")
 
-        requirements = list(qs)
-        all_case_ids = [
-            link.case_id
-            for req in requirements
-            for link in req.case_links.all()
-        ]
-        case_plans = _case_to_plans(all_case_ids)
-        rows = flatten_traceability(requirements, case_plans)
-
-        stamp = datetime.now().strftime("%Y%m%d")
-        if fmt == "docx":
-            png = svg_to_png_bytes(svg_blob) if svg_blob else None
-            payload = build_traceability_docx(rows, diagram_png=png)
-            return RequirementExportView._binary_download(
-                payload,
-                f"requirements-traceability-{stamp}.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        try:
+            from tcms_requirements.traceability.diagram import _case_to_plans  # noqa: WPS433
+            from tcms_requirements.traceability.report import (  # noqa: WPS433
+                flatten_traceability,
+                svg_to_png_bytes,
+                svg_to_rlg,
             )
-        if fmt == "pdf":
+
+            filters = _parse_dashboard_filters(params)
+            svg_blob = params.get("svg", "") or ""
+
+            qs = (
+                Requirement.objects
+                .select_related("level")
+                .prefetch_related("case_links__case")
+                .order_by("identifier")
+            )
+            if filters.get("product"):
+                qs = qs.filter(product_id=filters["product"])
+            if filters.get("project"):
+                qs = qs.filter(project_id=filters["project"])
+            if filters.get("feature"):
+                qs = qs.filter(feature_id=filters["feature"])
+
+            requirements = list(qs)
+            all_case_ids = [
+                link.case_id
+                for req in requirements
+                for link in req.case_links.all()
+            ]
+            case_plans = _case_to_plans(all_case_ids)
+            rows = flatten_traceability(requirements, case_plans)
+
+            stamp = datetime.now().strftime("%Y%m%d")
+            if fmt == "docx":
+                png = svg_to_png_bytes(svg_blob) if svg_blob else None
+                payload = build_traceability_docx(rows, diagram_png=png)
+                return RequirementExportView._binary_download(
+                    payload,
+                    f"requirements-traceability-{stamp}.docx",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            # fmt == "pdf"
             rlg = svg_to_rlg(svg_blob) if svg_blob else None
             payload = build_traceability_pdf(rows, diagram_rlg=rlg)
             return RequirementExportView._binary_download(
@@ -512,7 +522,20 @@ class RequirementTraceabilityExportView(LoginRequiredMixin, PermissionRequiredMi
                 f"requirements-traceability-{stamp}.pdf",
                 "application/pdf",
             )
-        return HttpResponseBadRequest("Format must be 'docx' or 'pdf'.")
+        except Exception:
+            logger.exception(
+                "traceability export failed (fmt=%s, has_svg=%s)",
+                fmt,
+                bool(params.get("svg")),
+            )
+            return HttpResponse(
+                "Traceability export failed. Check the server log for the "
+                "traceback. Common cause: missing dependencies — run "
+                "`pip install -e .` after upgrading the plugin so svglib, "
+                "Pillow, python-docx, and reportlab are installed.",
+                status=500,
+                content_type="text/plain; charset=utf-8",
+            )
 
 
 class RequirementTraceabilityView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
