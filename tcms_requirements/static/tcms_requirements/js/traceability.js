@@ -63,11 +63,29 @@
         links: payload.links.map(function (d) { return Object.assign({}, d); })
     });
 
+    // Node palette. Extended across every Sankey view:
+    //   blue = requirement, orange = case, green = plan,
+    //   purple = bug (grey when closed), gold = feature,
+    //   status_* = verification-status nodes (green / red / orange / grey).
     var kindColour = {
         requirement: "#39a5dc",
         case: "#ec7a08",
-        plan: "#3f9c35"
+        plan: "#3f9c35",
+        bug: "#9c27b0",
+        feature: "#f0ad4e",
+        status_passed: "#3f9c35",
+        status_failed: "#cc0000",
+        status_blocked: "#ec7a08",
+        status_untested: "#9c9c9c",
+        status_idle: "#bcbcbc"
     };
+
+    function nodeFill(d) {
+        if (d.kind === "bug" && d.is_open === false) {
+            return "#888";
+        }
+        return kindColour[d.kind] || "#888";
+    }
 
     svg.append("g")
         .attr("fill", "none")
@@ -78,6 +96,9 @@
         .attr("d", d3.sankeyLinkHorizontal())
         .attr("stroke", function (d) {
             if (d.suspect) { return "#cc0000"; }
+            if (d.link_type === "has_bug") {
+                return d.bug_open === false ? "#b0b0b0" : "#c890d9";
+            }
             return "#9cc2dc";
         })
         .attr("stroke-width", function (d) { return Math.max(1, d.width); });
@@ -92,9 +113,15 @@
         .attr("y", function (d) { return d.y0; })
         .attr("width", function (d) { return d.x1 - d.x0; })
         .attr("height", function (d) { return Math.max(1, d.y1 - d.y0); })
-        .attr("fill", function (d) { return kindColour[d.kind] || "#888"; })
+        .attr("fill", nodeFill)
         .append("title")
-        .text(function (d) { return d.name + " (" + d.value + ")"; });
+        .text(function (d) {
+            var suffix = "";
+            if (d.kind === "bug") {
+                suffix = d.is_open === false ? " [closed]" : " [open]";
+            }
+            return d.name + suffix + " (" + d.value + ")";
+        });
 
     node.append("text")
         .attr("x", function (d) { return d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6; })

@@ -473,7 +473,10 @@ class RequirementTraceabilityExportView(LoginRequiredMixin, PermissionRequiredMi
             return HttpResponseBadRequest("Format must be 'docx' or 'pdf'.")
 
         try:
-            from tcms_requirements.traceability.diagram import _case_to_plans  # noqa: WPS433
+            from tcms_requirements.traceability.diagram import (  # noqa: WPS433
+                _case_to_bugs,
+                _case_to_plans,
+            )
             from tcms_requirements.traceability.report import (  # noqa: WPS433
                 flatten_traceability,
                 svg_to_png_bytes,
@@ -503,7 +506,8 @@ class RequirementTraceabilityExportView(LoginRequiredMixin, PermissionRequiredMi
                 for link in req.case_links.all()
             ]
             case_plans = _case_to_plans(all_case_ids)
-            rows = flatten_traceability(requirements, case_plans)
+            case_bugs = _case_to_bugs(all_case_ids)
+            rows = flatten_traceability(requirements, case_plans, case_bugs=case_bugs)
 
             stamp = datetime.now().strftime("%Y%m%d")
             if fmt == "docx":
@@ -538,22 +542,92 @@ class RequirementTraceabilityExportView(LoginRequiredMixin, PermissionRequiredMi
             )
 
 
-class RequirementTraceabilityView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
-    """Interactive Sankey graph: Requirement -> TestCase -> TestPlan."""
+class _BaseTraceabilityView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
+    """Shared base for the four Sankey views — DRY common context."""
     permission_required = "tcms_requirements.view_requirement"
     template_name = "tcms_requirements/traceability.html"
+    view_key = ""
+    view_title = ""
+    view_subtitle = ""
+    show_export_buttons = False
+
+    # Shared catalogue used to render the view-switcher tabs at the top
+    # of every Sankey page. (key, icon, label, subtitle, url_name.)
+    VIEWS = [
+        ("default", "fa-sitemap", "Full chain",
+         "Requirement → Test case → Test plan → Bug",
+         "requirement-traceability"),
+        ("feature", "fa-th-large", "By feature",
+         "Requirement → Feature → Test case",
+         "requirement-traceability-feature"),
+        ("verification", "fa-check-circle", "Verification status",
+         "Requirement → Test case → Latest execution result",
+         "requirement-traceability-verification"),
+    ]
+
+    def _build_payload(self, filters):
+        raise NotImplementedError
 
     def get_context_data(self, **kwargs):
-        from tcms_requirements.traceability.diagram import build_sankey_payload  # noqa: WPS433
-
         ctx = super().get_context_data(**kwargs)
         filters = _parse_dashboard_filters(self.request.GET)
         ctx["filter_values"] = filters
         ctx["payload_json"] = json.dumps(
-            build_sankey_payload(filters=filters),
+            self._build_payload(filters=filters),
             default=str,
         )
         ctx["products"] = _filter_options("product")
         ctx["projects"] = _filter_options("project")
         ctx["features"] = _filter_options("feature")
+        ctx["view_key"] = self.view_key
+        ctx["view_title"] = self.view_title
+        ctx["view_subtitle"] = self.view_subtitle
+        ctx["available_views"] = self.VIEWS
+        ctx["show_export_buttons"] = self.show_export_buttons
         return ctx
+
+
+class RequirementTraceabilityView(_BaseTraceabilityView):
+    """Default 4-column chain: Requirement → TestCase → TestPlan → Bug.
+
+    Also serves `requirement-traceability-linear` for backward compat —
+    the separate linear view was folded in once the default adopted
+    the 4-column layout.
+    """
+    view_key = "default"
+    view_title = "Full traceability chain"
+    view_subtitle = "Requirement → Test case → Test plan → Bug"
+    show_export_buttons = True
+
+    def _build_payload(self, filters):
+        from tcms_requirements.traceability.diagram import build_sankey_payload  # noqa: WPS433
+        return build_sankey_payload(filters=filters)
+
+
+class RequirementTraceabilityFeatureView(_BaseTraceabilityView):
+    """3-column flow: Requirement → Feature → TestCase."""
+    view_key = "feature"
+    view_title = "By feature"
+    view_subtitle = "Requirement → Feature → Test case"
+    show_export_buttons = True
+
+    def _build_payload(self, filters):
+        from tcms_requirements.traceability.diagram import build_feature_sankey_payload  # noqa: WPS433
+        return build_feature_sankey_payload(filters=filters)
+
+
+class RequirementTraceabilityVerificationView(_BaseTraceabilityView):
+    """3-column flow: Requirement → TestCase → Latest execution status.
+
+    The audit-evidence view — shows what proportion of requirements is
+    backed by passing tests right now. The single most useful one for
+    release-go/no-go conversations.
+    """
+    view_key = "verification"
+    view_title = "Verification status"
+    view_subtitle = "Requirement → Test case → Latest execution result"
+    show_export_buttons = True
+
+    def _build_payload(self, filters):
+        from tcms_requirements.traceability.diagram import build_verification_sankey_payload  # noqa: WPS433
+        return build_verification_sankey_payload(filters=filters)

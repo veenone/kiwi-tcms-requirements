@@ -132,6 +132,79 @@
     min-height: 48px;
 }
 
+/* Traceability view switcher — card-style tiles at the top of each
+   Sankey page. Active card is highlighted with a primary border and
+   accent bar; hovered cards lift slightly for affordance. */
+.traceability-view-switcher {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.traceability-view-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    color: #292e34;
+    text-decoration: none;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.traceability-view-card:hover,
+.traceability-view-card:focus {
+    border-color: #39a5dc;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+    color: #292e34;
+    transform: translateY(-1px);
+}
+
+.traceability-view-card.is-active {
+    background: linear-gradient(90deg, #39a5dc 0%, #39a5dc 6px, #fff 6px);
+    border-color: #39a5dc;
+    box-shadow: 0 2px 4px rgba(57, 165, 220, 0.25);
+}
+
+.traceability-view-card-icon {
+    flex: 0 0 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef6fc;
+    color: #39a5dc;
+    border-radius: 50%;
+    font-size: 16px;
+}
+
+.traceability-view-card.is-active .traceability-view-card-icon {
+    background: #39a5dc;
+    color: #fff;
+}
+
+.traceability-view-card-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.traceability-view-card-label {
+    font-weight: 600;
+    font-size: 14px;
+    color: #292e34;
+}
+
+.traceability-view-card-subtitle {
+    font-size: 12px;
+    color: #72767b;
+    margin-top: 2px;
+    line-height: 1.3;
+}
+
 /* Sankey traceability diagram container. */
 #requirements-sankey-wrap {
     background: #fff;

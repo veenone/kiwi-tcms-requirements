@@ -9,9 +9,18 @@
  *
  * On failure (no SVG rendered yet), we still submit with an empty svg —
  * the server falls back to the table-only report.
+ *
+ * Diagnostics: every step logs to the browser console with the
+ * `[tcms-req-export]` prefix so silent failures are easy to spot in
+ * DevTools. If the click doesn't even produce a log line, the script
+ * isn't being served — run `./manage.py collectstatic` or check the
+ * Network tab for a 404 on this file.
  */
 (function () {
     "use strict";
+
+    var TAG = "[tcms-req-export]";
+    console.log(TAG, "script loaded");
 
     var form = document.getElementById("requirements-traceability-export-form");
     var svgField = document.getElementById("requirements-export-svg");
@@ -20,31 +29,76 @@
     var svgEl = document.getElementById("requirements-sankey");
     var urls = window.REQ_TRACE_EXPORT_URLS || {};
 
-    if (!form || !svgField || !docxBtn || !pdfBtn) { return; }
+    var missing = [];
+    if (!form) { missing.push("form#requirements-traceability-export-form"); }
+    if (!svgField) { missing.push("input#requirements-export-svg"); }
+    if (!docxBtn) { missing.push("button#requirements-export-docx"); }
+    if (!pdfBtn) { missing.push("button#requirements-export-pdf"); }
+    if (!urls.docx || !urls.pdf) { missing.push("window.REQ_TRACE_EXPORT_URLS"); }
+
+    if (missing.length) {
+        console.error(TAG, "missing required elements:", missing);
+        if (docxBtn) {
+            docxBtn.title = "Export wiring incomplete — see browser console.";
+        }
+        if (pdfBtn) {
+            pdfBtn.title = "Export wiring incomplete — see browser console.";
+        }
+        return;
+    }
+    console.log(TAG, "wired", { docx: urls.docx, pdf: urls.pdf, hasSvg: !!svgEl });
 
     function captureSvg() {
-        if (!svgEl) { return ""; }
+        if (!svgEl) {
+            console.warn(TAG, "no live SVG — submitting empty (server falls back to table-only).");
+            return "";
+        }
         try {
-            // Clone so we don't mutate the live DOM.
             var clone = svgEl.cloneNode(true);
-            // svglib requires an explicit namespace on the root.
             clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
             clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+            // Make sure width/height are set so svglib has dimensions.
+            if (!clone.getAttribute("width")) {
+                clone.setAttribute("width", svgEl.clientWidth || 1200);
+            }
+            if (!clone.getAttribute("height")) {
+                clone.setAttribute("height", svgEl.clientHeight || 600);
+            }
             var serializer = new XMLSerializer();
-            return '<?xml version="1.0" encoding="UTF-8"?>\n' +
-                   serializer.serializeToString(clone);
+            var serialized = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+                             serializer.serializeToString(clone);
+            console.log(TAG, "captured SVG: " + serialized.length + " bytes");
+            return serialized;
         } catch (err) {
+            console.error(TAG, "SVG capture failed:", err);
             return "";
         }
     }
 
-    function submit(url) {
-        if (!url) { return; }
+    function submit(url, label) {
+        if (!url) {
+            console.error(TAG, "no URL configured for", label);
+            return;
+        }
+        console.log(TAG, "submitting", label, "to", url);
         svgField.value = captureSvg();
         form.action = url;
-        form.submit();
+        try {
+            form.submit();
+        } catch (err) {
+            console.error(TAG, "form.submit() raised:", err);
+            alert(
+                "Export request couldn't be sent. Open the browser console for details."
+            );
+        }
     }
 
-    docxBtn.addEventListener("click", function () { submit(urls.docx); });
-    pdfBtn.addEventListener("click", function () { submit(urls.pdf); });
+    docxBtn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        submit(urls.docx, "DOCX");
+    });
+    pdfBtn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        submit(urls.pdf, "PDF");
+    });
 })();

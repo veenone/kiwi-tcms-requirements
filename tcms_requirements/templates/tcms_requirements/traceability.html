@@ -1,26 +1,44 @@
 {% extends "base.html" %}
 {% load i18n static %}
 
-{% block title %}{% trans "Requirements traceability" %}{% endblock %}
+{% block title %}{% trans "Requirements traceability" %} — {{ view_title }}{% endblock %}
 
 {% block contents %}
 <div class="container-fluid" id="requirements-traceability">
   <div class="page-header">
     <h1>
-      {% trans "Traceability diagram" %}
-      <small>{% trans "Requirement → Test case → Test plan" %}</small>
+      {{ view_title }}
+      <small>{{ view_subtitle }}</small>
       <div class="btn-group pull-right">
+        {% if show_export_buttons %}
         <button type="button" class="btn btn-default" id="requirements-export-docx">
           <i class="fa fa-file-word-o"></i> DOCX
         </button>
         <button type="button" class="btn btn-default" id="requirements-export-pdf">
           <i class="fa fa-file-pdf-o"></i> PDF
         </button>
+        {% endif %}
         <a href="{% url 'requirement-dashboard' %}" class="btn btn-link">
           <i class="fa fa-arrow-left"></i> {% trans "Dashboard" %}
         </a>
       </div>
     </h1>
+  </div>
+
+  <!-- View switcher — card-style tiles. -->
+  <div class="traceability-view-switcher">
+    {% for key, icon, label, subtitle, url_name in available_views %}
+      <a href="{% url url_name %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+         class="traceability-view-card {% if key == view_key %}is-active{% endif %}">
+        <div class="traceability-view-card-icon">
+          <i class="fa {{ icon }}"></i>
+        </div>
+        <div class="traceability-view-card-body">
+          <div class="traceability-view-card-label">{{ label }}</div>
+          <div class="traceability-view-card-subtitle">{{ subtitle }}</div>
+        </div>
+      </a>
+    {% endfor %}
   </div>
 
   <form method="get" class="form-inline requirements-filters" style="margin-bottom:12px;">
@@ -52,7 +70,7 @@
       </select>
     </div>
     <button type="submit" class="btn btn-primary">{% trans "Apply" %}</button>
-    <a href="{% url 'requirement-traceability' %}" class="btn btn-link">{% trans "Reset" %}</a>
+    <a href="{{ request.path }}" class="btn btn-link">{% trans "Reset" %}</a>
   </form>
 
   <div id="requirements-sankey-wrap">
@@ -63,6 +81,7 @@
 
 <script type="application/json" id="requirements-sankey-data">{{ payload_json|safe }}</script>
 
+{% if show_export_buttons %}
 <!-- Hidden form used by the export buttons. JS populates `svg` with
      the live-rendered diagram on click, then submits. -->
 <form id="requirements-traceability-export-form" method="post" style="display:none;">
@@ -79,10 +98,13 @@ window.REQ_TRACE_EXPORT_URLS = {
   pdf: "{% url 'requirement-traceability-export' 'pdf' %}"
 };
 </script>
+{% endif %}
 
 <link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">
 <script src="{% static 'tcms_requirements/vendor/d3.v7.min.js' %}"></script>
 <script src="{% static 'tcms_requirements/vendor/d3-sankey.min.js' %}"></script>
 <script src="{% static 'tcms_requirements/js/traceability.js' %}"></script>
+{% if show_export_buttons %}
 <script src="{% static 'tcms_requirements/js/traceability_export.js' %}"></script>
+{% endif %}
 {% endblock %}

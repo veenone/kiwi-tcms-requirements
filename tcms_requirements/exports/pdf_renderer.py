@@ -186,7 +186,7 @@ def build_traceability_pdf(rows, *, title="Requirements traceability report", di
         doc.build(story)
         return buf.getvalue()
 
-    table_rows = [["Requirement", "Title", "Level", "Link", "Test case", "Test plan", "Suspect?"]]
+    table_rows = [["Requirement", "Title", "Level", "Link", "Test case", "Test plan", "Bug", "Suspect?"]]
     for row in rows:
         table_rows.append([
             row["req_identifier"],
@@ -195,12 +195,24 @@ def build_traceability_pdf(rows, *, title="Requirements traceability report", di
             row["link_type"] or "—",
             f"TC-{row['case_id']}" if row["case_id"] else "—",
             row["plan_name"] or "—",
+            _pdf_bug_cell(row),
             "SUSPECT" if row["suspect"] else "",
         ])
-    story.append(_table(table_rows, col_widths=[80, 220, 60, 60, 60, 140, 50]))
+    story.append(_table(
+        table_rows,
+        col_widths=[72, 180, 55, 55, 55, 110, 120, 45],
+    ))
 
     doc.build(story)
     return buf.getvalue()
+
+
+def _pdf_bug_cell(row) -> str:
+    if not row.get("bug_id"):
+        return "—"
+    suffix = " [open]" if row.get("bug_open") else " [closed]"
+    summary = row.get("bug_summary") or ""
+    return f"BUG-{row['bug_id']}{suffix} {summary}".strip()
 
 
 def _append_count_section(story, rows, title, row_label, row_key=None):

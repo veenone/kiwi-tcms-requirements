@@ -1,6 +1,6 @@
 [project]
 name = "kiwitcms-requirements"
-version = "0.2.1"
+version = "0.2.2"
 description = "Requirements management and traceability plugin for Kiwi TCMS: registry of requirements, M2M trace to test cases, Sankey traceability, coverage dashboard with charts, JIRA-ready CSV export, XLSX/DOCX/PDF reports, ASPICE / ISO 9001 support."
 readme = "README.md"
 license = "GPL-2.0-or-later"
@@ -14,8 +14,6 @@ dependencies = [
     "openpyxl>=3.1",
     "python-docx>=1.1",
     "reportlab>=4.0",
-    "svglib>=1.5",
-    "Pillow>=10.0",
 ]
 authors = [{ name = "Achmad Fienan Rahardianto", email = "veenone@gmail.com" }]
 classifiers = [
@@ -43,7 +41,18 @@ keywords = [
 ]
 
 [project.optional-dependencies]
-diagram = ["networkx>=3.0"]
+# Embedding the Sankey diagram inside DOCX / PDF exports needs these
+# extras. Without them the export still works — it just produces a
+# table-only report (no Sankey image). Install with:
+#     pip install -e ".[diagrams]"
+# Pillow + svglib are listed here (not as runtime deps) because they
+# can drag in transitive C-extension packages on some hosts; making
+# them opt-in keeps the base install lean and pip-resolver-friendly.
+diagrams = [
+    "svglib>=1.5",
+    "Pillow>=10.0",
+]
+analytics = ["networkx>=3.0"]
 dev = [
     "build>=1.0",
     "twine>=4.0",

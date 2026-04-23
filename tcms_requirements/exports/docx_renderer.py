@@ -181,11 +181,21 @@ def build_traceability_docx(rows, *, title="Requirements traceability report", d
 
     if diagram_png:
         _add_heading(doc, "Traceability diagram", level=1)
-        doc.add_picture(io.BytesIO(diagram_png), width=Inches(6.5))
-        doc.add_paragraph(
-            "Rendered from the browser view at the time of export. Blue = requirements, "
-            "orange = test cases, green = test plans, red strokes = suspect links."
-        )
+        try:
+            doc.add_picture(io.BytesIO(diagram_png), width=Inches(6.5))
+            doc.add_paragraph(
+                "Rendered from the browser view at the time of export. Blue = requirements, "
+                "orange = test cases, green = test plans, purple = bugs, "
+                "red strokes = suspect links."
+            )
+        except Exception as exc:  # noqa: BLE001 — broken PNG shouldn't drop the table
+            import logging  # noqa: WPS433
+            logging.getLogger("tcms_requirements").warning(
+                "DOCX add_picture failed: %s — continuing with table-only report.", exc,
+            )
+            doc.add_paragraph(
+                "[Diagram could not be embedded — see the table below for the same data.]"
+            )
 
     _add_heading(doc, "Traceability table", level=1)
     if not rows:
@@ -193,7 +203,7 @@ def build_traceability_docx(rows, *, title="Requirements traceability report", d
         return _dump(doc)
 
     doc.add_paragraph(f"{len(rows)} row(s).")
-    table = doc.add_table(rows=1, cols=7)
+    table = doc.add_table(rows=1, cols=8)
     table.style = "Light Grid Accent 1"
     header = table.rows[0].cells
     header[0].text = "Requirement"
@@ -202,7 +212,8 @@ def build_traceability_docx(rows, *, title="Requirements traceability report", d
     header[3].text = "Link"
     header[4].text = "Test case"
     header[5].text = "Test plan"
-    header[6].text = "Suspect?"
+    header[6].text = "Bug"
+    header[7].text = "Suspect?"
 
     for row in rows:
         cells = table.add_row().cells
@@ -212,9 +223,18 @@ def build_traceability_docx(rows, *, title="Requirements traceability report", d
         cells[3].text = row["link_type"] or "—"
         cells[4].text = f"TC-{row['case_id']}" if row["case_id"] else "—"
         cells[5].text = row["plan_name"] or "—"
-        cells[6].text = "⚠ suspect" if row["suspect"] else ""
+        cells[6].text = _bug_cell(row)
+        cells[7].text = "⚠ suspect" if row["suspect"] else ""
 
     return _dump(doc)
+
+
+def _bug_cell(row) -> str:
+    if not row.get("bug_id"):
+        return "—"
+    suffix = " [open]" if row.get("bug_open") else " [closed]"
+    summary = row.get("bug_summary") or ""
+    return f"BUG-{row['bug_id']}{suffix} {summary}".strip()
 
 
 def _dump(doc) -> bytes:

@@ -353,15 +353,52 @@ class Requirement(models.Model):
     )
 
     # ── safety / criticality (all blank-safe) ───────────────────────
-    asil = models.CharField(max_length=4, choices=ASIL_CHOICES, blank=True, default="")
-    sil = models.CharField(max_length=4, choices=SIL_CHOICES, blank=True, default="")
+    asil = models.CharField(
+        max_length=4,
+        choices=ASIL_CHOICES,
+        blank=True,
+        default="",
+        help_text=(
+            "Automotive Safety Integrity Level per ISO 26262. QM = quality "
+            "managed (no safety impact); A → D is increasing safety risk, "
+            "D being the most stringent (e.g. airbag deployment). Leave "
+            "blank for non-automotive or non-safety requirements."
+        ),
+    )
+    sil = models.CharField(
+        max_length=4,
+        choices=SIL_CHOICES,
+        blank=True,
+        default="",
+        help_text=(
+            "Safety Integrity Level per IEC 61508 (industrial functional "
+            "safety). 1 = lowest risk reduction, 4 = highest. Used for "
+            "process-industry and machinery safety; leave blank otherwise."
+        ),
+    )
     iec62304_class = models.CharField(
         max_length=4,
         choices=IEC62304_CLASS_CHOICES,
         blank=True,
         default="",
+        help_text=(
+            "Medical-device software safety class per IEC 62304. "
+            "A = no injury possible, B = non-serious injury possible, "
+            "C = death or serious injury possible. Leave blank for "
+            "non-medical software."
+        ),
     )
-    dal = models.CharField(max_length=4, choices=DAL_CHOICES, blank=True, default="")
+    dal = models.CharField(
+        max_length=4,
+        choices=DAL_CHOICES,
+        blank=True,
+        default="",
+        help_text=(
+            "Design Assurance Level per DO-178C (aviation software). "
+            "A = catastrophic failure condition, E = no effect on safety. "
+            "Leave blank for non-aviation software."
+        ),
+    )
 
     # ── document control (ISO 9001 §7.5) ─────────────────────────────
     doc_id = models.CharField(

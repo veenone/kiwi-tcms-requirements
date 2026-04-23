@@ -22,6 +22,23 @@ urlpatterns = [
         views.RequirementTraceabilityView.as_view(),
         name="requirement-traceability",
     ),
+    # Backward-compat: /traceability/linear/ used to be a separate view
+    # before the default was switched to the 4-column linear layout.
+    path(
+        "traceability/linear/",
+        views.RequirementTraceabilityView.as_view(),
+        name="requirement-traceability-linear",
+    ),
+    path(
+        "traceability/feature/",
+        views.RequirementTraceabilityFeatureView.as_view(),
+        name="requirement-traceability-feature",
+    ),
+    path(
+        "traceability/verification/",
+        views.RequirementTraceabilityVerificationView.as_view(),
+        name="requirement-traceability-verification",
+    ),
     path(
         "traceability/export/<str:fmt>/",
         views.RequirementTraceabilityExportView.as_view(),
