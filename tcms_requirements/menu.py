@@ -8,6 +8,7 @@ MENU_ITEMS = [
         # Registry group — CRUD entry points.
         ("All requirements", reverse_lazy("requirement-list")),
         ("New requirement", reverse_lazy("requirement-new")),
+        ("Projects", reverse_lazy("requirement-project-list")),
         ("-", "-"),
         # Analytics group — dashboard + Sankey traceability views.
         ("Requirements dashboard", reverse_lazy("requirement-dashboard")),

@@ -207,6 +207,92 @@ def build_traceability_pdf(rows, *, title="Requirements traceability report", di
     return buf.getvalue()
 
 
+def build_project_pdf(project, requirements, snapshot) -> bytes:
+    """Project programme report: metadata header + scoped requirement list."""
+    from reportlab.lib.pagesizes import A4  # noqa: WPS433
+    from reportlab.platypus import SimpleDocTemplate
+
+    title = f"Project: {project.name}"
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, title=title)
+    story = [
+        _heading(title),
+        _para(f"Generated: {_now_iso()} · kiwitcms-requirements v{__version__}"),
+        _spacer(),
+        _heading("Programme metadata", level=2),
+        _table(
+            [["Field", "Value"]] + _project_metadata_kv(project),
+            col_widths=[160, 320],
+        ),
+        _spacer(),
+    ]
+
+    coverage = (snapshot or {}).get("coverage", {}) or {}
+    story.append(_heading("Coverage snapshot", level=2))
+    story.append(_table([
+        ["Metric", "Value"],
+        ["Total requirements", str((snapshot or {}).get("total", 0))],
+        ["Coverage %", f"{coverage.get('percent', 0)}%"],
+        ["Linked / total",
+         f"{coverage.get('linked', 0)} / {coverage.get('total', 0)}"],
+        ["Orphan requirements", str((snapshot or {}).get("orphan_requirements", 0))],
+        ["Suspect links", str((snapshot or {}).get("suspect_link_count", 0))],
+    ], col_widths=[220, 220]))
+    story.append(_spacer())
+
+    plans = list(project.test_plans.all())
+    if plans:
+        story.append(_heading("Test plans in scope", level=2))
+        plan_rows = [["ID", "Name"]]
+        for plan in plans:
+            plan_rows.append([f"TP-{plan.pk}", getattr(plan, "name", "") or ""])
+        story.append(_table(plan_rows, col_widths=[60, 420]))
+        story.append(_spacer())
+
+    reqs = list(requirements)
+    story.append(_heading("Requirements", level=2))
+    story.append(_para(f"<b>{len(reqs)}</b> requirement(s) in this project."))
+    story.append(_spacer())
+
+    if reqs:
+        rows = [["ID", "Title", "Level", "Status", "Priority", "Links"]]
+        for r in reqs:
+            rows.append([
+                r.identifier,
+                r.title,
+                r.level.name if r.level_id else "—",
+                r.get_status_display(),
+                r.get_priority_display(),
+                str(r.case_links.count()),
+            ])
+        story.append(_table(rows, col_widths=[60, 180, 70, 70, 60, 40]))
+
+    doc.build(story)
+    return buf.getvalue()
+
+
+def _project_metadata_kv(project) -> list:
+    owner = "—"
+    if project.owner_id:
+        owner = project.owner.get_full_name() or project.owner.username
+    return [
+        ["Code", project.code or "—"],
+        ["Product", str(project.product)],
+        ["Status", project.get_status_display()],
+        ["Owner", owner],
+        ["Start date", _pdf_format_date_with_week(project.start_date)],
+        ["Target end date", _pdf_format_date_with_week(project.target_end_date)],
+        ["Actual end date", _pdf_format_date_with_week(project.actual_end_date)],
+        ["JIRA project key", project.jira_project_key or "—"],
+    ]
+
+
+def _pdf_format_date_with_week(value) -> str:
+    if not value:
+        return "—"
+    return f"{value.isoformat()} (W{value.isocalendar()[1]})"
+
+
 def _pdf_bug_cell(row) -> str:
     if not row.get("bug_id"):
         return "—"

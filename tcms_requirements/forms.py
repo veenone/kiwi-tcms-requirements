@@ -6,6 +6,7 @@ so both the web view and any programmatic save share the same logic.
 from django import forms
 
 from tcms_requirements.models import (
+    CustomFieldDefinition,
     Feature,
     Project,
     Requirement,
@@ -21,7 +22,73 @@ from tcms_requirements.state_machine import (
 )
 
 
-class RequirementForm(forms.ModelForm):
+class CustomFieldsMixin:
+    """Add admin-defined dynamic fields to a ModelForm.
+
+    Subclass declares `custom_fields_target` (matches `CustomFieldDefinition.target_model`).
+    Field values are persisted into the model's `external_refs` JSONField.
+    """
+
+    custom_fields_target: str = ""
+    custom_field_prefix: str = "cf_"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.custom_fields_target:
+            return
+        existing = (self.instance.external_refs or {}) if self.instance.pk else {}
+        for definition in self._iter_definitions():
+            field_name = self.custom_field_prefix + definition.slug
+            self.fields[field_name] = self._build_field(definition, existing.get(definition.slug))
+
+    def custom_field_iter(self):
+        for name in self.fields:
+            if name.startswith(self.custom_field_prefix):
+                yield self[name]
+
+    def save(self, commit=True):
+        external_refs = dict(self.instance.external_refs or {})
+        for name, value in self.cleaned_data.items():
+            if not name.startswith(self.custom_field_prefix):
+                continue
+            slug = name[len(self.custom_field_prefix):]
+            if value in (None, ""):
+                external_refs.pop(slug, None)
+                continue
+            if hasattr(value, "isoformat"):
+                value = value.isoformat()
+            external_refs[slug] = value
+        self.instance.external_refs = external_refs
+        return super().save(commit=commit)
+
+    def _iter_definitions(self):
+        return CustomFieldDefinition.objects.filter(
+            target_model=self.custom_fields_target,
+            is_active=True,
+        ).order_by("order", "slug")
+
+    @staticmethod
+    def _build_field(definition, initial):
+        kwargs = {
+            "label": definition.label,
+            "required": definition.required,
+            "help_text": definition.help_text or "",
+            "initial": "" if initial is None else initial,
+        }
+        if definition.field_type == "url":
+            return forms.URLField(**kwargs)
+        if definition.field_type == "int":
+            return forms.IntegerField(**kwargs)
+        if definition.field_type == "date":
+            return forms.DateField(**kwargs, widget=forms.DateInput(attrs={"type": "date"}))
+        if definition.field_type == "textarea":
+            return forms.CharField(**kwargs, widget=forms.Textarea(attrs={"rows": 3}))
+        return forms.CharField(**kwargs)
+
+
+class RequirementForm(CustomFieldsMixin, forms.ModelForm):
+    custom_fields_target = "requirement"
+
     """Form for creating and editing a Requirement."""
 
     class Meta:
@@ -74,6 +141,43 @@ class RequirementForm(forms.ModelForm):
         except StateTransitionError as exc:
             raise forms.ValidationError(str(exc)) from exc
         return cleaned
+
+
+class ProjectForm(CustomFieldsMixin, forms.ModelForm):
+    """Form for creating and editing a programme-record Project."""
+
+    custom_fields_target = "project"
+
+    class Meta:
+        model = Project
+        fields = [
+            # identity
+            "product", "name", "code", "description",
+            # programme record
+            "status", "owner", "stakeholders",
+            "start_date", "target_end_date", "actual_end_date",
+            # scope
+            "test_plans",
+            # external system keys
+            "jira_project_key", "external_refs",
+        ]
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 4}),
+            "start_date": forms.DateInput(attrs={"type": "date"}),
+            "target_end_date": forms.DateInput(attrs={"type": "date"}),
+            "actual_end_date": forms.DateInput(attrs={"type": "date"}),
+            "external_refs": forms.Textarea(attrs={
+                "rows": 3,
+                "placeholder": '{"polarion": "PROJ-X", "ado": "12345"}',
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Lazy-import Kiwi's TestPlan so the form module imports cleanly
+        # in unit-test contexts where Kiwi isn't on the path.
+        from tcms.testplans.models import TestPlan  # noqa: WPS433
+        self.fields["test_plans"].queryset = TestPlan.objects.order_by("name")
 
 
 class CSVImportForm(forms.Form):

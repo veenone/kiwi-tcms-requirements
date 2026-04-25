@@ -229,6 +229,88 @@ def build_traceability_docx(rows, *, title="Requirements traceability report", d
     return _dump(doc)
 
 
+def build_project_docx(project, requirements, snapshot) -> bytes:
+    """Project programme report: metadata header + scoped requirement list."""
+    from docx import Document  # noqa: WPS433
+
+    doc = Document()
+    doc.add_heading(f"Project: {project.name}", level=0)
+    doc.add_paragraph(f"Generated: {_now_iso()} · kiwitcms-requirements v{__version__}")
+
+    _add_heading(doc, "Programme metadata", level=1)
+    _add_kv_table(doc, _project_metadata_rows(project))
+
+    coverage = (snapshot or {}).get("coverage", {})
+    _add_heading(doc, "Coverage snapshot", level=1)
+    _add_kv_table(doc, [
+        ("Total requirements", (snapshot or {}).get("total", 0)),
+        ("Coverage",
+         f"{coverage.get('percent', 0)} % "
+         f"({coverage.get('linked', 0)} / {coverage.get('total', 0)})"),
+        ("Orphan requirements", (snapshot or {}).get("orphan_requirements", 0)),
+        ("Suspect links", (snapshot or {}).get("suspect_link_count", 0)),
+    ])
+
+    plans = list(project.test_plans.all())
+    if plans:
+        _add_heading(doc, "Test plans in scope", level=1)
+        table = doc.add_table(rows=1, cols=2)
+        table.style = "Light Grid Accent 1"
+        header = table.rows[0].cells
+        header[0].text = "ID"
+        header[1].text = "Name"
+        for plan in plans:
+            cells = table.add_row().cells
+            cells[0].text = f"TP-{plan.pk}"
+            cells[1].text = getattr(plan, "name", "") or ""
+
+    reqs = list(requirements)
+    _add_heading(doc, "Requirements", level=1)
+    doc.add_paragraph(f"{len(reqs)} requirement(s) in this project.")
+    if not reqs:
+        return _dump(doc)
+
+    table = doc.add_table(rows=1, cols=6)
+    table.style = "Light Grid Accent 1"
+    header = table.rows[0].cells
+    header[0].text = "Identifier"
+    header[1].text = "Title"
+    header[2].text = "Level"
+    header[3].text = "Status"
+    header[4].text = "Priority"
+    header[5].text = "Linked cases"
+    for r in reqs:
+        cells = table.add_row().cells
+        cells[0].text = r.identifier
+        cells[1].text = r.title
+        cells[2].text = r.level.name if r.level_id else "—"
+        cells[3].text = r.get_status_display()
+        cells[4].text = r.get_priority_display()
+        cells[5].text = str(r.case_links.count())
+
+    return _dump(doc)
+
+
+def _project_metadata_rows(project) -> list:
+    return [
+        ("Code", project.code or "—"),
+        ("Product", str(project.product)),
+        ("Status", project.get_status_display()),
+        ("Owner", project.owner.get_full_name() or project.owner.username
+            if project.owner_id else "—"),
+        ("Start date", _format_date_with_week(project.start_date)),
+        ("Target end date", _format_date_with_week(project.target_end_date)),
+        ("Actual end date", _format_date_with_week(project.actual_end_date)),
+        ("JIRA project key", project.jira_project_key or "—"),
+    ]
+
+
+def _format_date_with_week(value) -> str:
+    if not value:
+        return "—"
+    return f"{value.isoformat()} (W{value.isocalendar()[1]})"
+
+
 def _bug_cell(row) -> str:
     if not row.get("bug_id"):
         return "—"

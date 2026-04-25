@@ -48,11 +48,13 @@ from tcms_requirements.exports.pdf_renderer import (
 from tcms_requirements.forms import (
     CSVImportForm,
     LinkCaseForm,
+    ProjectForm,
     RequirementFilterForm,
     RequirementForm,
 )
 from tcms_requirements.imports.csv_import import import_bytes
 from tcms_requirements.models import (
+    Project,
     Requirement,
     RequirementTestCaseLink,
 )
@@ -631,3 +633,168 @@ class RequirementTraceabilityVerificationView(_BaseTraceabilityView):
     def _build_payload(self, filters):
         from tcms_requirements.traceability.diagram import build_verification_sankey_payload  # noqa: WPS433
         return build_verification_sankey_payload(filters=filters)
+
+
+# ── projects (programme-record views) ────────────────────────────────
+class ProjectListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+    """Card grid of programmes with status, owner, and coverage at a glance."""
+    permission_required = "tcms_requirements.view_requirement"
+    model = Project
+    template_name = "tcms_requirements/project_list.html"
+    context_object_name = "projects"
+    paginate_by = 24
+
+    # Closed/cancelled programmes drop to the bottom; everything else
+    # sorts by status priority then product/name for a stable display.
+    _STATUS_ORDER = {
+        "active": 0,
+        "planning": 1,
+        "on_hold": 2,
+        "closed": 3,
+        "cancelled": 4,
+    }
+
+    def get_queryset(self):
+        return (
+            Project.objects
+            .select_related("product", "owner")
+            .prefetch_related("test_plans", "stakeholders")
+        )
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        cards = []
+        for project in ctx["projects"]:
+            snapshot = dashboard_snapshot(filters={"project": project.pk})
+            cards.append({
+                "project": project,
+                "coverage": snapshot["coverage"],
+                "total": snapshot["total"],
+                "orphans": snapshot["orphan_requirements"],
+                "suspects": snapshot["suspect_link_count"],
+            })
+        cards.sort(key=lambda c: (
+            self._STATUS_ORDER.get(c["project"].status, 99),
+            c["project"].product.name,
+            c["project"].name,
+        ))
+        ctx["cards"] = cards
+        return ctx
+
+
+class ProjectDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    """Single project: metadata + scoped dashboard + Sankey + exports."""
+    permission_required = "tcms_requirements.view_requirement"
+    model = Project
+    template_name = "tcms_requirements/project_get.html"
+    context_object_name = "project"
+
+    def get_queryset(self):
+        return (
+            Project.objects
+            .select_related("product", "owner")
+            .prefetch_related("test_plans", "stakeholders")
+        )
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        project = self.object
+        filters = {"project": project.pk}
+        snapshot = dashboard_snapshot(filters=filters)
+        ctx["snapshot"] = snapshot
+        ctx["snapshot_json"] = json.dumps(snapshot, default=str)
+
+        from tcms_requirements.traceability.diagram import build_sankey_payload  # noqa: WPS433
+        ctx["sankey_payload_json"] = json.dumps(
+            build_sankey_payload(filters=filters),
+            default=str,
+        )
+
+        ctx["requirements"] = (
+            Requirement.objects
+            .filter(project=project)
+            .select_related("level", "feature", "category")
+            .prefetch_related("case_links")
+            .order_by("identifier")
+        )
+        ctx["features"] = project.features.all().order_by("name")
+        return ctx
+
+
+class ProjectCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    permission_required = "tcms_requirements.add_project"
+    model = Project
+    form_class = ProjectForm
+    template_name = "tcms_requirements/project_mutable.html"
+    success_url = reverse_lazy("requirement-project-list")
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f"Created project {self.object.name}.")
+        return response
+
+
+class ProjectUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    permission_required = "tcms_requirements.change_project"
+    model = Project
+    form_class = ProjectForm
+    template_name = "tcms_requirements/project_mutable.html"
+
+    def get_success_url(self):
+        return reverse("requirement-project-get", args=[self.object.pk])
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f"Updated project {self.object.name}.")
+        return response
+
+
+class ProjectDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
+    permission_required = "tcms_requirements.delete_project"
+    model = Project
+    template_name = "tcms_requirements/project_confirm_delete.html"
+    success_url = reverse_lazy("requirement-project-list")
+
+
+class ProjectExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    """Download a project's requirements + metadata as DOCX or PDF."""
+    permission_required = "tcms_requirements.view_requirement"
+    ALLOWED_FORMATS = {"docx", "pdf"}
+
+    def get(self, request, pk, fmt):
+        if fmt not in self.ALLOWED_FORMATS:
+            return HttpResponseBadRequest(
+                f"Format must be one of {sorted(self.ALLOWED_FORMATS)}."
+            )
+        project = get_object_or_404(
+            Project.objects.select_related("product", "owner"),
+            pk=pk,
+        )
+
+        from tcms_requirements.exports.docx_renderer import build_project_docx  # noqa: WPS433
+        from tcms_requirements.exports.pdf_renderer import build_project_pdf  # noqa: WPS433
+
+        snapshot = dashboard_snapshot(filters={"project": project.pk})
+        requirements = (
+            Requirement.objects
+            .filter(project=project)
+            .select_related("level", "category", "product", "project", "feature")
+            .prefetch_related("case_links__case")
+            .order_by("identifier")
+        )
+
+        stamp = datetime.now().strftime("%Y%m%d")
+        slug = project.code or f"project-{project.pk}"
+        if fmt == "docx":
+            payload = build_project_docx(project, requirements, snapshot)
+            return RequirementExportView._binary_download(
+                payload,
+                f"project-{slug}-{stamp}.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        payload = build_project_pdf(project, requirements, snapshot)
+        return RequirementExportView._binary_download(
+            payload,
+            f"project-{slug}-{stamp}.pdf",
+            "application/pdf",
+        )

@@ -1,6 +1,6 @@
 [project]
 name = "kiwitcms-requirements"
-version = "0.2.2"
+version = "0.3.0"
 description = "Requirements management and traceability plugin for Kiwi TCMS: registry of requirements, M2M trace to test cases, Sankey traceability, coverage dashboard with charts, JIRA-ready CSV export, XLSX/DOCX/PDF reports, ASPICE / ISO 9001 support."
 readme = "README.md"
 license = "GPL-2.0-or-later"

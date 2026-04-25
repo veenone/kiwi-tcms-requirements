@@ -45,6 +45,38 @@ urlpatterns = [
         name="requirement-traceability-export",
     ),
 
+    # ── projects ─────────────────────────────────────────────────────
+    path(
+        "projects/",
+        views.ProjectListView.as_view(),
+        name="requirement-project-list",
+    ),
+    path(
+        "projects/<int:pk>/",
+        views.ProjectDetailView.as_view(),
+        name="requirement-project-get",
+    ),
+    path(
+        "projects/new/",
+        views.ProjectCreateView.as_view(),
+        name="requirement-project-new",
+    ),
+    path(
+        "projects/<int:pk>/edit/",
+        views.ProjectUpdateView.as_view(),
+        name="requirement-project-edit",
+    ),
+    path(
+        "projects/<int:pk>/delete/",
+        views.ProjectDeleteView.as_view(),
+        name="requirement-project-delete",
+    ),
+    path(
+        "projects/<int:pk>/export/<str:fmt>/",
+        views.ProjectExportView.as_view(),
+        name="requirement-project-export",
+    ),
+
     # ── CRUD ─────────────────────────────────────────────────────────
     path("new/", views.RequirementCreateView.as_view(), name="requirement-new"),
     path("<int:pk>/", views.RequirementDetailView.as_view(), name="requirement-get"),

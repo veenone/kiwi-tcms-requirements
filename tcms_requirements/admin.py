@@ -9,6 +9,7 @@ from django.contrib import admin
 from tcms_requirements.models import (
     BaselineLinkSnapshot,
     BaselineRequirementSnapshot,
+    CustomFieldDefinition,
     Feature,
     JiraIntegrationConfig,
     Project,
@@ -44,9 +45,43 @@ class RequirementLevelAdmin(admin.ModelAdmin):
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = ("name", "product", "code", "updated_at")
-    list_filter = ("product",)
-    search_fields = ("name", "code", "description")
+    list_display = (
+        "name",
+        "product",
+        "code",
+        "status",
+        "owner",
+        "target_end_date",
+        "updated_at",
+    )
+    list_filter = ("status", "product")
+    search_fields = ("name", "code", "description", "jira_project_key")
+    # Kiwi's TestPlanAdmin lacks search_fields, so autocomplete on
+    # test_plans would trigger admin.E040. Use raw_id_fields instead.
+    raw_id_fields = ("test_plans",)
+    autocomplete_fields = ("owner", "stakeholders")
+    fieldsets = (
+        ("Identity", {
+            "fields": ("name", "code", "description", "product"),
+        }),
+        ("Programme", {
+            "fields": (
+                "status",
+                "owner",
+                "stakeholders",
+                "start_date",
+                "target_end_date",
+                "actual_end_date",
+            ),
+        }),
+        ("Scope", {
+            "fields": ("test_plans",),
+        }),
+        ("External system keys", {
+            "classes": ("collapse",),
+            "fields": ("jira_project_key", "external_refs"),
+        }),
+    )
 
 
 @admin.register(Feature)
@@ -129,6 +164,22 @@ class BaselineRequirementSnapshotAdmin(admin.ModelAdmin):
 class BaselineLinkSnapshotAdmin(admin.ModelAdmin):
     list_display = ("baseline", "requirement_identifier", "case_id", "link_type", "suspect")
     list_filter = ("baseline",)
+
+
+@admin.register(CustomFieldDefinition)
+class CustomFieldDefinitionAdmin(admin.ModelAdmin):
+    list_display = (
+        "label", "slug", "target_model", "field_type",
+        "required", "order", "is_active", "updated_at",
+    )
+    list_filter = ("target_model", "field_type", "is_active")
+    list_editable = ("order", "is_active")
+    search_fields = ("slug", "label", "help_text")
+    fieldsets = (
+        ("Targeting", {"fields": ("target_model", "slug", "label")}),
+        ("Type & input", {"fields": ("field_type", "required", "help_text")}),
+        ("Display", {"fields": ("order", "is_active")}),
+    )
 
 
 @admin.register(JiraIntegrationConfig)

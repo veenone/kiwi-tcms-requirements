@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% load i18n static requirements_extras %}
+
+{% block title %}{{ project.name }}{% endblock %}
+
+{% block contents %}
+<div class="container-fluid" id="requirements-project-detail" data-project-id="{{ project.pk }}">
+  <div class="page-header">
+    <h1>
+      {{ project.name }}
+      <small>{{ project.product.name }}{% if project.code %} · <code>{{ project.code }}</code>{% endif %}</small>
+      <span class="label requirements-project-pill requirements-project-pill-{{ project.status }}">
+        {{ project.get_status_display }}
+      </span>
+      <div class="btn-group pull-right">
+        <a href="{% url 'requirement-project-list' %}" class="btn btn-link">
+          <i class="fa fa-arrow-left"></i> {% trans "All projects" %}
+        </a>
+        <a href="{% url 'requirement-project-edit' project.pk %}" class="btn btn-default">
+          <i class="fa fa-edit"></i> {% trans "Edit" %}
+        </a>
+        <a href="{% url 'requirement-project-delete' project.pk %}" class="btn btn-default">
+          <i class="fa fa-trash"></i> {% trans "Delete" %}
+        </a>
+        <a href="{% url 'requirement-list' %}?project={{ project.pk }}" class="btn btn-default">
+          <i class="fa fa-list"></i> {% trans "Filter requirements" %}
+        </a>
+        <a href="{% url 'requirement-project-export' project.pk 'docx' %}" class="btn btn-default">
+          <i class="fa fa-file-word-o"></i> DOCX
+        </a>
+        <a href="{% url 'requirement-project-export' project.pk 'pdf' %}" class="btn btn-default">
+          <i class="fa fa-file-pdf-o"></i> PDF
+        </a>
+      </div>
+    </h1>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>{% trans "Programme metadata" %}</strong></div>
+        <div class="panel-body">
+          <dl class="dl-horizontal">
+            <dt>{% trans "Owner" %}</dt>
+            <dd>{% if project.owner %}{{ project.owner.get_full_name|default:project.owner.username }}{% else %}<em class="text-muted">—</em>{% endif %}</dd>
+            <dt>{% trans "Stakeholders" %}</dt>
+            <dd>
+              {% for u in project.stakeholders.all %}
+                <span class="label label-info requirements-pill">{{ u.get_full_name|default:u.username }}</span>
+              {% empty %}
+                <em class="text-muted">—</em>
+              {% endfor %}
+            </dd>
+            <dt>{% trans "Start" %}</dt>
+            <dd>{{ project.start_date|date:"Y-m-d (\WW)"|default:"—" }}</dd>
+            <dt>{% trans "Target end" %}</dt>
+            <dd>{{ project.target_end_date|date:"Y-m-d (\WW)"|default:"—" }}</dd>
+            <dt>{% trans "Actual end" %}</dt>
+            <dd>{{ project.actual_end_date|date:"Y-m-d (\WW)"|default:"—" }}</dd>
+            <dt>{% trans "JIRA" %}</dt>
+            <dd>{% if project.jira_project_key %}<code>{{ project.jira_project_key }}</code>{% else %}—{% endif %}</dd>
+          </dl>
+          {% if project.description %}
+          <hr>
+          <div>{{ project.description|linebreaksbr }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>{% trans "Coverage snapshot" %}</strong></div>
+        <div class="panel-body requirements-project-coverage">
+          <div class="row">
+            <div class="col-xs-6">
+              <h2 class="text-center">{{ snapshot.coverage.percent }}<small>%</small></h2>
+              <p class="text-center text-muted">{{ snapshot.coverage.linked }} / {{ snapshot.coverage.total }} {% trans "linked" %}</p>
+            </div>
+            <div class="col-xs-6">
+              <ul class="list-unstyled">
+                <li><strong>{{ snapshot.total }}</strong> {% trans "requirements" %}</li>
+                <li><span class="label label-warning requirements-pill">{{ snapshot.orphan_requirements }}</span> {% trans "orphan" %}</li>
+                <li><span class="label label-danger requirements-pill">{{ snapshot.suspect_link_count }}</span> {% trans "suspect links" %}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>{% trans "Test plans in scope" %}</strong></div>
+        <div class="panel-body">
+          {% if project.test_plans.all %}
+          <ul class="list-unstyled">
+            {% for plan in project.test_plans.all %}
+              <li>
+                <i class="fa fa-files-o"></i>
+                <a href="/plan/{{ plan.pk }}/">TP-{{ plan.pk }}</a>
+                {{ plan.name }}
+              </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <em class="text-muted">{% trans "No test plans linked. Use the admin to add some." %}</em>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <strong>{% trans "Traceability (project-scoped)" %}</strong>
+    </div>
+    <div class="panel-body">
+      <div id="project-sankey" style="min-height:280px;"></div>
+      <script type="application/json" id="project-sankey-payload">{{ sankey_payload_json|safe }}</script>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <strong>{% trans "Requirements" %}</strong>
+      <small class="text-muted">{{ requirements|length }} {% trans "in scope" %}</small>
+    </div>
+    {% if requirements %}
+    <table class="table table-condensed table-striped requirements-table">
+      <thead>
+        <tr>
+          <th>{% trans "Identifier" %}</th>
+          <th>{% trans "Title" %}</th>
+          <th>{% trans "Level" %}</th>
+          <th>{% trans "Feature" %}</th>
+          <th>{% trans "Status" %}</th>
+          <th>{% trans "Cases" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in requirements %}
+        <tr>
+          <td><a href="{% url 'requirement-get' r.pk %}">{{ r.identifier }}</a></td>
+          <td>{{ r.title }}</td>
+          <td>{{ r.level.name|default:"—" }}</td>
+          <td>{{ r.feature.name|default:"—" }}</td>
+          <td>{% status_badge r.status %}</td>
+          <td>{{ r.case_links.all|length }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="panel-body">
+      <em class="text-muted">{% trans "No requirements assigned to this project yet." %}</em>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">
+{% endblock %}
