@@ -12,6 +12,12 @@
       <a href="{% url 'requirement-edit' requirement.pk %}" class="btn btn-default pull-right">
         <i class="fa fa-pencil"></i> {% trans "Edit" %}
       </a>
+      {% if perms.tcms_requirements.approve_requirement %}
+      <a href="{% url 'requirement-sign' requirement.pk %}"
+         class="btn btn-default pull-right" style="margin-right:6px;">
+        <i class="fa fa-pencil-square-o"></i> {% trans "Sign as approved" %}
+      </a>
+      {% endif %}
       <a href="{% url 'requirement-link-cases' requirement.pk %}"
          class="btn btn-primary pull-right" style="margin-right:6px;">
         <i class="fa fa-link"></i> {% trans "Link test case" %}
@@ -89,6 +95,35 @@
           </li>
           {% endfor %}
         </ul>
+      </section>
+      {% endif %}
+
+      {% if signatures %}
+      <section class="requirements-section">
+        <h3>{% trans "Signatures" %} <small>{{ signatures|length }}</small></h3>
+        <p class="text-muted small">
+          {% trans "Each row is a tamper-evident attestation. Hash is SHA-256 over the requirement state at signing time." %}
+        </p>
+        <table class="table table-condensed">
+          <thead>
+            <tr>
+              <th>{% trans "When" %}</th>
+              <th>{% trans "Signed by" %}</th>
+              <th>{% trans "Hash" %}</th>
+              <th>{% trans "Comment" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sig in signatures %}
+            <tr>
+              <td><small>{{ sig.signed_at|date:"Y-m-d H:i T" }}</small></td>
+              <td>{% if sig.signed_by %}{{ sig.signed_by.get_full_name|default:sig.signed_by.username }}{% else %}—{% endif %}</td>
+              <td><code title="{{ sig.signature_hash }}">{{ sig.signature_hash|slice:":12" }}…</code></td>
+              <td>{{ sig.comment|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </section>
       {% endif %}
 

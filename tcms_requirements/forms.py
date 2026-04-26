@@ -9,6 +9,7 @@ from tcms_requirements.models import (
     CustomFieldDefinition,
     Feature,
     Project,
+    ProjectBaseline,
     Requirement,
     RequirementCategory,
     RequirementLevel,
@@ -178,6 +179,44 @@ class ProjectForm(CustomFieldsMixin, forms.ModelForm):
         # in unit-test contexts where Kiwi isn't on the path.
         from tcms.testplans.models import TestPlan  # noqa: WPS433
         self.fields["test_plans"].queryset = TestPlan.objects.order_by("name")
+
+
+class ProjectBaselineForm(forms.ModelForm):
+    """Form for freezing a project's requirement set as a named baseline."""
+
+    class Meta:
+        model = ProjectBaseline
+        fields = ["name", "version", "notes"]
+        widgets = {
+            "notes": forms.Textarea(attrs={
+                "rows": 3,
+                "placeholder": "Why this baseline was created (release tag, audit context, etc.)",
+            }),
+        }
+
+    def __init__(self, *args, project=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._project = project
+        # Lazy-import Kiwi Version to keep this module importable in unit tests.
+        try:
+            from tcms.management.models import Version  # noqa: WPS433
+        except ImportError:
+            self.fields["version"].queryset = self.fields["version"].queryset.none()
+        else:
+            qs = Version.objects.order_by("-id")
+            if project and project.product_id:
+                qs = qs.filter(product=project.product)
+            self.fields["version"].queryset = qs
+
+    def clean_name(self):
+        name = self.cleaned_data["name"]
+        if self._project and ProjectBaseline.objects.filter(
+            project=self._project, name=name
+        ).exists():
+            raise forms.ValidationError(
+                f"Project {self._project.name} already has a baseline named '{name}'."
+            )
+        return name
 
 
 class CSVImportForm(forms.Form):

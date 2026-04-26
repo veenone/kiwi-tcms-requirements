@@ -25,6 +25,12 @@
         <a href="{% url 'requirement-list' %}?project={{ project.pk }}" class="btn btn-default">
           <i class="fa fa-list"></i> {% trans "Filter requirements" %}
         </a>
+        <a href="{% url 'requirement-project-baseline-list' project.pk %}" class="btn btn-default">
+          <i class="fa fa-camera"></i> {% trans "Baselines" %}
+        </a>
+        <a href="{% url 'requirement-project-evidence-pack' project.pk %}" class="btn btn-default">
+          <i class="fa fa-archive"></i> {% trans "Evidence pack" %}
+        </a>
         <a href="{% url 'requirement-project-export' project.pk 'docx' %}" class="btn btn-default">
           <i class="fa fa-file-word-o"></i> DOCX
         </a>

@@ -815,3 +815,251 @@ class JiraIntegrationConfig(models.Model):
     def is_enabled(self) -> bool:
         return self.backend != "disabled" and bool(self.base_url) and bool(self.api_token)
 
+
+# ─────────────────────────────────────────────────────────────────────────
+# v0.4: project-scoped baselines (audit replay).
+#
+# Mirrors RequirementBaseline (product-scoped, v0.2) but at Project granularity
+# so an auditor can ask "show me the spec for release X of programme Y" and get
+# a frozen, immutable answer. Created once, never edited.
+# ─────────────────────────────────────────────────────────────────────────
+class ProjectBaseline(models.Model):
+    """Frozen point-in-time snapshot of a Project's Requirements + their links.
+
+    Patterned on RequirementBaseline but scoped to Project rather than Product,
+    which is the granularity release teams actually mean by "the spec at
+    release X". Use `ProjectBaseline.freeze(project, name, ...)` to create one;
+    direct `.objects.create()` would leave the snapshot tables empty.
+    """
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="baselines",
+    )
+    name = models.CharField(max_length=128)
+    notes = models.TextField(blank=True, default="")
+    version = models.ForeignKey(
+        "management.Version",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="project_baselines",
+        help_text="Optional Kiwi Version this baseline corresponds to.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_project_baselines",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        unique_together = [("project", "name")]
+
+    def __str__(self):
+        return f"ProjectBaseline {self.name} ({self.project})"
+
+    @classmethod
+    def freeze(cls, project, name, *, notes="", version=None, created_by=None):
+        """Create a baseline and populate its snapshot tables in one transaction.
+
+        Captures every Requirement currently scoped to `project` plus every
+        RequirementTestCaseLink belonging to those requirements. The
+        denormalised columns (identifier/title/status/etc.) survive deletion
+        of the source rows; the FKs use SET_NULL so the audit trail persists.
+        """
+        from django.db import transaction
+
+        with transaction.atomic():
+            baseline = cls.objects.create(
+                project=project,
+                name=name,
+                notes=notes,
+                version=version,
+                created_by=created_by,
+            )
+
+            requirements = list(
+                project.requirements.select_related(
+                    "category", "level", "source", "feature", "parent_requirement"
+                ).all()
+            )
+
+            req_snapshots = [
+                ProjectBaselineRequirementSnapshot(
+                    baseline=baseline,
+                    requirement=req,
+                    identifier=req.identifier,
+                    title=req.title,
+                    status=req.status,
+                    priority=req.priority,
+                    level_code=req.level.code if req.level_id else "",
+                    asil=req.asil,
+                    sil=req.sil,
+                    iec62304_class=req.iec62304_class,
+                    dal=req.dal,
+                    payload=_requirement_payload(req),
+                )
+                for req in requirements
+            ]
+            ProjectBaselineRequirementSnapshot.objects.bulk_create(req_snapshots)
+
+            link_rows = []
+            for req in requirements:
+                for link in req.case_links.all():
+                    link_rows.append(ProjectBaselineLinkSnapshot(
+                        baseline=baseline,
+                        requirement_identifier=req.identifier,
+                        case_id=link.case_id,
+                        link_type=link.link_type,
+                        suspect=link.suspect,
+                        payload={
+                            "coverage_notes": link.coverage_notes,
+                            "created_at": link.created_at.isoformat() if link.created_at else None,
+                        },
+                    ))
+            if link_rows:
+                ProjectBaselineLinkSnapshot.objects.bulk_create(link_rows)
+
+            return baseline
+
+
+def _requirement_payload(req):
+    """Snapshot every Requirement field as a JSON-safe dict."""
+    return {
+        "description": req.description,
+        "rationale": req.rationale,
+        "category": req.category.name if req.category_id else None,
+        "source": req.source.name if req.source_id else None,
+        "level": req.level.code if req.level_id else None,
+        "feature": req.feature.name if req.feature_id else None,
+        "parent_requirement": (
+            req.parent_requirement.identifier if req.parent_requirement_id else None
+        ),
+        "verification_method": req.verification_method,
+        "verification_exemption_reason": req.verification_exemption_reason,
+        "doc_id": req.doc_id,
+        "doc_revision": req.doc_revision,
+        "effective_date": req.effective_date.isoformat() if req.effective_date else None,
+        "change_reason": req.change_reason,
+        "jira_issue_key": req.jira_issue_key,
+        "external_refs": dict(req.external_refs or {}),
+        "updated_at": req.updated_at.isoformat() if req.updated_at else None,
+    }
+
+
+class ProjectBaselineRequirementSnapshot(models.Model):
+    """One row per Requirement frozen into a ProjectBaseline."""
+
+    baseline = models.ForeignKey(
+        ProjectBaseline,
+        on_delete=models.CASCADE,
+        related_name="requirement_snapshots",
+    )
+    requirement = models.ForeignKey(
+        Requirement,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="project_baseline_snapshots",
+    )
+    # Denormalised so the snapshot survives Requirement edits/deletion.
+    identifier = models.CharField(max_length=64)
+    title = models.CharField(max_length=255)
+    status = models.CharField(max_length=24)
+    priority = models.CharField(max_length=16, blank=True, default="")
+    level_code = models.CharField(max_length=48, blank=True, default="")
+    asil = models.CharField(max_length=4, blank=True, default="")
+    sil = models.CharField(max_length=4, blank=True, default="")
+    iec62304_class = models.CharField(max_length=4, blank=True, default="")
+    dal = models.CharField(max_length=4, blank=True, default="")
+    payload = models.JSONField(
+        default=dict,
+        help_text="Full-fidelity field dump at snapshot time.",
+    )
+
+    class Meta:
+        ordering = ["identifier"]
+        unique_together = [("baseline", "identifier")]
+
+
+class ProjectBaselineLinkSnapshot(models.Model):
+    """One row per RequirementTestCaseLink frozen into a ProjectBaseline."""
+
+    baseline = models.ForeignKey(
+        ProjectBaseline,
+        on_delete=models.CASCADE,
+        related_name="link_snapshots",
+    )
+    requirement_identifier = models.CharField(max_length=64)
+    case_id = models.IntegerField()
+    link_type = models.CharField(max_length=16)
+    suspect = models.BooleanField(default=False)
+    payload = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ["requirement_identifier", "case_id"]
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# v0.4: lightweight electronic signatures (audit-grade attestation).
+#
+# Wires up the existing `requirements.approve_requirement` permission as a
+# tamper-evident SHA-256 attestation. NOT a state-machine extension — there
+# is no `pending_approval` state, no queue, no transition gate. Each signature
+# is recorded on demand and surfaces in audit exports.
+# ─────────────────────────────────────────────────────────────────────────
+class RequirementSignature(models.Model):
+    """Tamper-evident signed attestation of a Requirement at a moment in time.
+
+    The hash is computed over (requirement_id, signed_by_id, signed_at,
+    identifier, title, description, rationale, status), so any later edit to
+    the source row invalidates the chain — auditors can re-compute the hash
+    and detect that the row no longer matches what was signed.
+    """
+
+    requirement = models.ForeignKey(
+        Requirement,
+        on_delete=models.CASCADE,
+        related_name="signatures",
+    )
+    signed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="requirement_signatures",
+    )
+    signed_at = models.DateTimeField(auto_now_add=True)
+    signature_hash = models.CharField(max_length=64, db_index=True)
+    comment = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["-signed_at"]
+        indexes = [
+            models.Index(fields=["requirement", "-signed_at"], name="tcmsreq_sig_req_idx"),
+        ]
+
+    def __str__(self):
+        return f"Signature on {self.requirement.identifier} by {self.signed_by_id}"
+
+    @staticmethod
+    def compute_hash(requirement, signed_by_id, signed_at) -> str:
+        """SHA-256 over a deterministic field projection of the requirement."""
+        import hashlib
+
+        parts = [
+            str(requirement.pk),
+            str(signed_by_id or ""),
+            signed_at.isoformat() if signed_at else "",
+            requirement.identifier or "",
+            requirement.title or "",
+            requirement.description or "",
+            requirement.rationale or "",
+            requirement.status or "",
+        ]
+        digest = hashlib.sha256("\x00".join(parts).encode("utf-8")).hexdigest()
+        return digest
+

@@ -77,6 +77,45 @@ urlpatterns = [
         name="requirement-project-export",
     ),
 
+    # ── v0.4: project baselines (audit replay) ───────────────────────
+    path(
+        "projects/<int:pk>/baselines/",
+        views.ProjectBaselineListView.as_view(),
+        name="requirement-project-baseline-list",
+    ),
+    path(
+        "projects/<int:pk>/baselines/new/",
+        views.ProjectBaselineCreateView.as_view(),
+        name="requirement-project-baseline-new",
+    ),
+    path(
+        "projects/<int:pk>/baselines/<int:bid>/",
+        views.ProjectBaselineDetailView.as_view(),
+        name="requirement-project-baseline-get",
+    ),
+    path(
+        "projects/<int:pk>/baselines/<int:bid>/diff/<int:other_bid>/",
+        views.ProjectBaselineDiffView.as_view(),
+        name="requirement-project-baseline-diff",
+    ),
+    path(
+        "projects/<int:pk>/baselines/<int:bid>/export/<str:fmt>/",
+        views.ProjectBaselineExportView.as_view(),
+        name="requirement-project-baseline-export",
+    ),
+    path(
+        "projects/<int:pk>/evidence-pack/",
+        views.ProjectEvidencePackView.as_view(),
+        name="requirement-project-evidence-pack",
+    ),
+
+    # ── v0.4: lightweight electronic signature on Requirement ────────
+    path(
+        "<int:pk>/sign/",
+        views.RequirementSignView.as_view(),
+        name="requirement-sign",
+    ),
+
     # ── CRUD ─────────────────────────────────────────────────────────
     path("new/", views.RequirementCreateView.as_view(), name="requirement-new"),
     path("<int:pk>/", views.RequirementDetailView.as_view(), name="requirement-get"),

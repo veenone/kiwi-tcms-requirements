@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Sign as approved" %} · {{ requirement.identifier }}{% endblock %}
+
+{% block contents %}
+<div class="container-fluid" id="requirements-requirement-sign-confirm">
+  <div class="page-header">
+    <h1>
+      {% trans "Sign as approved" %}
+      <small>{{ requirement.identifier }} — {{ requirement.title }}</small>
+    </h1>
+  </div>
+
+  <div class="alert alert-info">
+    <p>
+      <strong>{% trans "What this records." %}</strong>
+      {% blocktrans %}A tamper-evident signature row will be created with your user, the current timestamp, and a SHA-256 hash over the requirement's identity / title / description / rationale / status. The signature does <em>not</em> change the requirement's state — it attests to what state existed at the moment you signed.{% endblocktrans %}
+    </p>
+    <p class="text-muted">
+      {% blocktrans %}If the requirement is later edited, this signature stays intact but the hash will no longer match the live row — auditors can re-compute the hash to detect drift.{% endblocktrans %}
+    </p>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+      <label for="sign-comment">{% trans "Comment (optional)" %}</label>
+      <textarea id="sign-comment" name="comment" class="form-control" rows="3"
+                placeholder="{% trans 'Why are you signing? Reference an audit, review meeting, etc.' %}"></textarea>
+    </div>
+    <div class="btn-group">
+      <button type="submit" class="btn btn-primary">
+        <i class="fa fa-pencil-square-o"></i> {% trans "Sign as approved" %}
+      </button>
+      <a href="{% url 'requirement-get' requirement.pk %}" class="btn btn-default">
+        {% trans "Cancel" %}
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Baselines" %} · {{ project.name }}{% endblock %}
+
+{% block contents %}
+<div class="container-fluid" id="requirements-project-baseline-list">
+  <div class="page-header">
+    <h1>
+      {% trans "Baselines" %}
+      <small>{{ project.name }}{% if project.code %} · <code>{{ project.code }}</code>{% endif %}</small>
+      <div class="btn-group pull-right">
+        <a href="{% url 'requirement-project-get' project.pk %}" class="btn btn-link">
+          <i class="fa fa-arrow-left"></i> {% trans "Back to project" %}
+        </a>
+        <a href="{% url 'requirement-project-baseline-new' project.pk %}" class="btn btn-primary">
+          <i class="fa fa-camera"></i> {% trans "New baseline" %}
+        </a>
+      </div>
+    </h1>
+  </div>
+
+  {% if not baselines %}
+  <div class="requirements-blank-slate">
+    <p>{% trans "No baselines yet for this project." %}</p>
+    <p>
+      <a href="{% url 'requirement-project-baseline-new' project.pk %}" class="btn btn-primary">
+        <i class="fa fa-camera"></i> {% trans "Freeze the current requirement set" %}
+      </a>
+    </p>
+  </div>
+  {% else %}
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>{% trans "Name" %}</th>
+        <th>{% trans "Version" %}</th>
+        <th>{% trans "Created" %}</th>
+        <th>{% trans "By" %}</th>
+        <th>{% trans "Notes" %}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for baseline in baselines %}
+      <tr>
+        <td><a href="{% url 'requirement-project-baseline-get' project.pk baseline.pk %}">{{ baseline.name }}</a></td>
+        <td>{% if baseline.version %}{{ baseline.version }}{% else %}—{% endif %}</td>
+        <td>{{ baseline.created_at|date:"Y-m-d H:i" }}</td>
+        <td>
+          {% if baseline.created_by %}
+            {{ baseline.created_by.get_full_name|default:baseline.created_by.username }}
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ baseline.notes|truncatechars:80 }}</td>
+        <td class="text-right">
+          <a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'docx' %}" class="btn btn-xs btn-default">DOCX</a>
+          <a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'pdf' %}" class="btn btn-xs btn-default">PDF</a>
+          <a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'csv' %}" class="btn btn-xs btn-default">CSV</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}
