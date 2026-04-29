@@ -435,6 +435,19 @@ class Requirement(models.Model):
         default="",
         help_text="Section or page reference within the source doc (e.g. '§4.2.1').",
     )
+    document_file_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="File name of the source document (e.g. 'system-spec_v1.2.pdf').",
+    )
+    document_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Formal title of the source document "
+                  "(e.g. 'System Requirements Specification — Platform 2026').",
+    )
     level = models.ForeignKey(
         RequirementLevel,
         on_delete=models.PROTECT,

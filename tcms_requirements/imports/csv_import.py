@@ -258,6 +258,8 @@ def _build_defaults(row, fk_values) -> dict:
         "description": cell("description"),
         "rationale": cell("rationale"),
         "source_section": cell("source_section"),
+        "document_file_name": cell("document_file_name"),
+        "document_title": cell("document_title"),
         "status": cell("status") or "draft",
         "priority": cell("priority") or "medium",
         "verification_method": cell("verification_method") or "test",

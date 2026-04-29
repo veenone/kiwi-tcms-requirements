@@ -170,6 +170,13 @@
                 {% if requirement.source_section %}<br><small>{{ requirement.source_section }}</small>{% endif %}
               {% else %}—{% endif %}
             </dd>
+            <dt>{% trans "Document" %}</dt>
+            <dd>
+              {% if requirement.document_title %}{{ requirement.document_title }}{% else %}—{% endif %}
+              {% if requirement.document_file_name %}
+                <br><small><code>{{ requirement.document_file_name }}</code></small>
+              {% endif %}
+            </dd>
             <dt>{% trans "Product" %}</dt>   <dd>{{ requirement.product|default:"—" }}</dd>
             <dt>{% trans "Project" %}</dt>   <dd>{{ requirement.project|default:"—" }}</dd>
             <dt>{% trans "Feature" %}</dt>   <dd>{{ requirement.feature|default:"—" }}</dd>

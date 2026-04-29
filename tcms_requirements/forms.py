@@ -98,7 +98,8 @@ class RequirementForm(CustomFieldsMixin, forms.ModelForm):
             # identity
             "identifier", "title", "description", "rationale",
             # taxonomy
-            "category", "source", "source_section", "level",
+            "category", "source", "source_section",
+            "document_file_name", "document_title", "level",
             # organisation
             "product", "project", "feature", "parent_requirement",
             # lifecycle
@@ -226,7 +227,8 @@ class CSVImportForm(forms.Form):
         help_text=(
             "CSV (UTF-8) or XLSX with a header row. Required columns: "
             "identifier, title. Optional: description, rationale, level, "
-            "category, source, status, priority, product, project, feature, "
+            "category, source, source_section, document_file_name, "
+            "document_title, status, priority, product, project, feature, "
             "parent_requirement, verification_method, doc_id, doc_revision, "
             "asil, dal, iec62304_class, effective_date, change_reason, "
             "jira_issue_key, external_refs. Download a template to see the full shape."

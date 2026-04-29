@@ -41,6 +41,8 @@ def _jira_columns(mapping: dict) -> list:
         # but we always emit the column for predictable schema round-trip.
         custom.get("level", "Requirement Level"),
         custom.get("source_document", "Source Document"),
+        custom.get("document_file_name", "Document File Name"),
+        custom.get("document_title", "Document Title"),
         custom.get("parent_requirement", "Parent Requirement"),
         custom.get("linked_test_cases", "Linked Test Cases"),
         custom.get("asil", "ASIL"),
@@ -132,6 +134,8 @@ def _row(req, mapping: dict, columns: list) -> dict:
     custom = mapping.get("custom_fields", {})
     row[custom.get("level", "Requirement Level")] = req.level.name if req.level_id else ""
     row[custom.get("source_document", "Source Document")] = _source_document(req)
+    row[custom.get("document_file_name", "Document File Name")] = req.document_file_name
+    row[custom.get("document_title", "Document Title")] = req.document_title
     row[custom.get("parent_requirement", "Parent Requirement")] = _parent_identifier(req)
     row[custom.get("linked_test_cases", "Linked Test Cases")] = _linked_cases(req)
     row[custom.get("asil", "ASIL")] = req.asil
