@@ -572,6 +572,9 @@ class _BaseTraceabilityView(LoginRequiredMixin, PermissionRequiredMixin, Templat
         ("verification", "fa-check-circle", "Verification status",
          "Requirement → Test case → Latest execution result",
          "requirement-traceability-verification"),
+        ("document", "fa-file-text-o", "By source document",
+         "Source document → Requirement → Test case",
+         "requirement-traceability-document"),
     ]
 
     def _build_payload(self, filters):
@@ -640,6 +643,23 @@ class RequirementTraceabilityVerificationView(_BaseTraceabilityView):
     def _build_payload(self, filters):
         from tcms_requirements.traceability.diagram import build_verification_sankey_payload  # noqa: WPS433
         return build_verification_sankey_payload(filters=filters)
+
+
+class RequirementTraceabilityDocumentView(_BaseTraceabilityView):
+    """3-column flow: Source document → Requirement → Test case.
+
+    Aggregates requirements by their `document_title` (with file-name and
+    blank-document fallbacks) so reviewers can see which source documents
+    have weak verification coverage.
+    """
+    view_key = "document"
+    view_title = "By source document"
+    view_subtitle = "Source document → Requirement → Test case"
+    show_export_buttons = True
+
+    def _build_payload(self, filters):
+        from tcms_requirements.traceability.diagram import build_document_sankey_payload  # noqa: WPS433
+        return build_document_sankey_payload(filters=filters)
 
 
 # ── projects (programme-record views) ────────────────────────────────

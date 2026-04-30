@@ -17,6 +17,8 @@ MENU_ITEMS = [
          reverse_lazy("requirement-traceability-feature")),
         ("Traceability — verification status",
          reverse_lazy("requirement-traceability-verification")),
+        ("Traceability — by source document",
+         reverse_lazy("requirement-traceability-document")),
         ("-", "-"),
         # Data-exchange group — bulk import / export.
         ("Import (CSV / XLSX)", reverse_lazy("requirement-import")),

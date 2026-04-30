@@ -88,6 +88,19 @@
       </div>
     </fieldset>
 
+    {% with custom_fields=form.custom_field_iter %}
+    {% for field in custom_fields %}
+    {% if forloop.first %}
+    <fieldset class="requirements-fieldset">
+      <legend>{% trans "Custom fields" %}</legend>
+    {% endif %}
+      {% include "tcms_requirements/_field.html" with field=field %}
+    {% if forloop.last %}
+    </fieldset>
+    {% endif %}
+    {% endfor %}
+    {% endwith %}
+
     <fieldset class="requirements-fieldset collapsible">
       <legend>
         <a data-toggle="collapse" href="#fs-external">

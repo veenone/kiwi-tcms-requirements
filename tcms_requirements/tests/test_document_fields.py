@@ -13,8 +13,13 @@ from tcms.management.models import Classification, Product
 
 from tcms_requirements.exports.csv_export import COLUMNS, write_csv
 from tcms_requirements.exports.json_export import _requirement_payload
-from tcms_requirements.exports.templates import SAMPLE_ROWS, write_csv_template
+from tcms_requirements.exports.templates import (
+    SAMPLE_ROWS,
+    build_xlsx_template,
+    write_csv_template,
+)
 from tcms_requirements.forms import RequirementForm
+from tcms_requirements.imports.csv_import import import_bytes
 from tcms_requirements.models import (
     Project,
     Requirement,
@@ -85,6 +90,52 @@ class ImportTemplateTest(_DocFieldsSetup):
         self.assertIn("document_file_name", text)
         self.assertIn("document_title", text)
         self.assertIn("customer-rfp_v2.pdf", text)
+
+
+class XLSXTemplateTest(_DocFieldsSetup):
+    def test_xlsx_template_includes_document_fields_in_header_and_samples(self):
+        from openpyxl import load_workbook  # noqa: WPS433 — test-local
+
+        payload = build_xlsx_template()
+        wb = load_workbook(filename=io.BytesIO(payload), read_only=True, data_only=True)
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+        header = list(rows[0])
+
+        self.assertIn("document_file_name", header)
+        self.assertIn("document_title", header)
+
+        file_idx = header.index("document_file_name")
+        title_idx = header.index("document_title")
+        sample_file_values = {row[file_idx] for row in rows[1:] if row[file_idx]}
+        sample_title_values = {row[title_idx] for row in rows[1:] if row[title_idx]}
+        self.assertIn("customer-rfp_v2.pdf", sample_file_values)
+        self.assertIn("Customer RFP — Platform 2026", sample_title_values)
+
+
+class XLSXImportRoundTripTest(_DocFieldsSetup):
+    def test_xlsx_import_persists_document_fields(self):
+        from openpyxl import Workbook  # noqa: WPS433 — test-local
+
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["identifier", "title", "document_file_name", "document_title"])
+        ws.append([
+            "DOC-XLSX-1",
+            "XLSX import demo",
+            "imported-spec.xlsx",
+            "Imported Specification — Round-trip",
+        ])
+        buf = io.BytesIO()
+        wb.save(buf)
+
+        result = import_bytes(buf.getvalue(), "fixtures.xlsx", dry_run=False, user=self.user)
+
+        self.assertEqual(result.errors, [])
+        self.assertEqual(result.rows_created, 1)
+        instance = Requirement.objects.get(identifier="DOC-XLSX-1")
+        self.assertEqual(instance.document_file_name, "imported-spec.xlsx")
+        self.assertEqual(instance.document_title, "Imported Specification — Round-trip")
 
 
 class FormPersistsDocumentFieldsTest(_DocFieldsSetup):

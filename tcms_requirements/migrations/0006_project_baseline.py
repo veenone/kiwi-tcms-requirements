@@ -4,9 +4,8 @@ Adds three additive tables. Mirrors the existing RequirementBaseline (product-
 scoped, v0.2) at Project granularity so an auditor can ask "show me the spec
 for release X of programme Y" and get a frozen, immutable answer.
 
-Depends on 0004_project_management_fields (the last v0.3 migration). If a
-deployment also has the v0.3.x in-flight 0005_custom_field_definitions
-migration applied, Django will surface a fork via `makemigrations --merge`.
+Chains onto 0005_custom_field_definitions (the v0.4.0 addendum) so the v0.4.0
+migration line is linear; no `makemigrations --merge` needed.
 """
 from django.conf import settings
 from django.db import migrations, models
@@ -15,7 +14,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("tcms_requirements", "0004_project_management_fields"),
+        ("tcms_requirements", "0005_custom_field_definitions"),
         # Kiwi squashed management/0001+0002 into 0003_squashed.
         ("management", "0003_squashed"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
