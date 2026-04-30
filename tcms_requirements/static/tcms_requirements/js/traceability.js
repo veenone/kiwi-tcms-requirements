@@ -66,6 +66,7 @@
     // Node palette. Extended across every Sankey view:
     //   blue = requirement, orange = case, green = plan,
     //   purple = bug (grey when closed), gold = feature,
+    //   teal = source document,
     //   status_* = verification-status nodes (green / red / orange / grey).
     var kindColour = {
         requirement: "#39a5dc",
@@ -73,6 +74,7 @@
         plan: "#3f9c35",
         bug: "#9c27b0",
         feature: "#f0ad4e",
+        document: "#008b8b",
         status_passed: "#3f9c35",
         status_failed: "#cc0000",
         status_blocked: "#ec7a08",

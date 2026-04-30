@@ -40,6 +40,11 @@ urlpatterns = [
         name="requirement-traceability-verification",
     ),
     path(
+        "traceability/document/",
+        views.RequirementTraceabilityDocumentView.as_view(),
+        name="requirement-traceability-document",
+    ),
+    path(
         "traceability/export/<str:fmt>/",
         views.RequirementTraceabilityExportView.as_view(),
         name="requirement-traceability-export",

@@ -16,16 +16,35 @@
     min-width: 140px;
 }
 
-.requirements-table .label,
-.requirements-links-table .label,
-.requirements-history-table .label {
+/* Shared pill style for every plugin badge (status, priority, suspect,
+   project status, etc.). Use alongside Bootstrap label-* classes for color. */
+.requirements-pill {
     font-size: 12px;
     padding: 3px 10px;
     line-height: 1.4;
     border-radius: 10em;
     font-weight: 500;
     letter-spacing: 0.02em;
+    display: inline-block;
 }
+
+/* Project-status color variants, applied via requirements-project-pill-{status}. */
+.requirements-project-pill {
+    font-size: 12px;
+    padding: 3px 10px;
+    line-height: 1.4;
+    border-radius: 10em;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    display: inline-block;
+    color: #fff;
+    margin-left: 6px;
+}
+.requirements-project-pill-planning   { background: #39a5dc; }
+.requirements-project-pill-active     { background: #3f9c35; }
+.requirements-project-pill-on_hold    { background: #ec7a08; }
+.requirements-project-pill-closed     { background: #72767b; }
+.requirements-project-pill-cancelled  { background: #cc0000; }
 
 .requirements-section {
     border: 1px solid #ededed;

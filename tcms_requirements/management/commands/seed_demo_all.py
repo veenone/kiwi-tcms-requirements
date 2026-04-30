@@ -114,10 +114,14 @@ class Command(BaseCommand):
         self.stdout.write(self.style.MIGRATE_HEADING("--- seeding bugs ---"))
         call_command("seed_demo_bugs")
 
+        self.stdout.write(self.style.MIGRATE_HEADING("--- wiring project chain ---"))
+        self._wire_project_to_plan(plan)
+        self._spread_execution_statuses(plan)
+
         self.stdout.write(self.style.SUCCESS(
-            "\nDone. Visit /requirements/traceability/ — the Sankey should show "
-            "requirement → test case → {test plan, bug} chains, with one suspect "
-            "link (red) and at least one closed bug (grey)."
+            "\nDone. Visit /requirements/projects/ — every demo project now has "
+            "the demo plan in its scope, mixed pass/fail executions for the "
+            "verification view, and the Sankey populates end-to-end."
         ))
 
     # ── helpers ──────────────────────────────────────────────────────
@@ -211,6 +215,86 @@ class Command(BaseCommand):
             plan.add_case(case)
             cases.append(case)
         return cases
+
+    def _wire_project_to_plan(self, plan):
+        """Attach the demo plan plus every plan that hosts demo-linked
+        executions to each demo Project's `test_plans` M2M.
+
+        seed_demo_bugs may have placed its demo TestRun on a pre-existing
+        plan (whichever already contained the demo cases) rather than our
+        own [DEMO] plan, so we union both into project scope.
+        """
+        from tcms.testplans.models import TestPlan  # noqa: WPS433
+        from tcms.testruns.models import TestRun  # noqa: WPS433
+
+        from tcms_requirements.models import Project  # noqa: WPS433
+
+        projects = Project.objects.filter(product=plan.product)
+        if not projects.exists():
+            self.stdout.write(self.style.WARNING(
+                "No projects found on the demo product — skipping plan wiring."
+            ))
+            return
+
+        plan_ids = {plan.pk}
+        plan_ids.update(
+            TestRun.objects.filter(summary__startswith="[DEMO]")
+            .values_list("plan_id", flat=True)
+        )
+        plans = list(TestPlan.objects.filter(pk__in=plan_ids))
+        for project in projects:
+            project.test_plans.add(*plans)
+            names = ", ".join(repr(p.name) for p in plans)
+            self.stdout.write(
+                f"Linked {len(plans)} plan(s) to project {project.name!r}: {names}"
+            )
+
+    def _spread_execution_statuses(self, plan):
+        """Flip a slice of demo TestExecutions to PASSED/FAILED so the
+        verification Sankey view shows mixed outcomes instead of all-IDLE.
+
+        Targets executions in [DEMO] runs (regardless of which plan they
+        landed on) since seed_demo_bugs may pick a non-demo plan.
+        """
+        from tcms.testruns.models import TestExecution, TestExecutionStatus  # noqa: WPS433
+
+        passed = (
+            TestExecutionStatus.objects.filter(weight__gt=0).order_by("weight").first()
+        )
+        failed = (
+            TestExecutionStatus.objects.filter(weight__lt=0).order_by("-weight").first()
+        )
+        if passed is None or failed is None:
+            self.stdout.write(self.style.WARNING(
+                "Kiwi has no positive-weight or negative-weight TestExecutionStatus "
+                "rows — leaving demo executions at IDLE."
+            ))
+            return
+
+        executions = list(
+            TestExecution.objects.filter(run__summary__startswith="[DEMO]")
+            .order_by("pk")
+        )
+        if not executions:
+            self.stdout.write(self.style.WARNING(
+                "No executions found on [DEMO] runs — verification view will be all-IDLE."
+            ))
+            return
+
+        # 60% pass, 30% fail, 10% remain idle — mirrors a realistic dev cycle.
+        for idx, execution in enumerate(executions):
+            if idx % 10 < 6:
+                execution.status = passed
+            elif idx % 10 < 9:
+                execution.status = failed
+            else:
+                continue
+            execution.save(update_fields=["status"])
+
+        self.stdout.write(self.style.SUCCESS(
+            f"Spread statuses across {len(executions)} executions "
+            f"(~60% pass / 30% fail)."
+        ))
 
     def _flush(self):
         """Best-effort removal of previously-seeded DEMO rows.

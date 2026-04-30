@@ -38,6 +38,8 @@
       {% include "tcms_requirements/_field.html" with field=form.category %}
       {% include "tcms_requirements/_field.html" with field=form.source %}
       {% include "tcms_requirements/_field.html" with field=form.source_section %}
+      {% include "tcms_requirements/_field.html" with field=form.document_file_name %}
+      {% include "tcms_requirements/_field.html" with field=form.document_title %}
       {% include "tcms_requirements/_field.html" with field=form.level %}
     </fieldset>
 
@@ -85,6 +87,19 @@
         {% include "tcms_requirements/_field.html" with field=form.change_reason %}
       </div>
     </fieldset>
+
+    {% with custom_fields=form.custom_field_iter %}
+    {% for field in custom_fields %}
+    {% if forloop.first %}
+    <fieldset class="requirements-fieldset">
+      <legend>{% trans "Custom fields" %}</legend>
+    {% endif %}
+      {% include "tcms_requirements/_field.html" with field=field %}
+    {% if forloop.last %}
+    </fieldset>
+    {% endif %}
+    {% endfor %}
+    {% endwith %}
 
     <fieldset class="requirements-fieldset collapsible">
       <legend>

@@ -78,6 +78,8 @@ def build_requirement_list_docx(queryset, *, title="Requirements report") -> byt
             ("Verification", r.get_verification_method_display()),
             ("Source", r.source.name if r.source_id else "—"),
             ("Source section", r.source_section or "—"),
+            ("Document title", r.document_title or "—"),
+            ("Document file name", r.document_file_name or "—"),
             ("Doc id / revision", f"{r.doc_id or '—'} {r.doc_revision or ''}".strip()),
             ("ASIL / DAL / IEC62304", " / ".join(filter(None, [r.asil, r.dal, r.iec62304_class])) or "—"),
             ("JIRA", r.jira_issue_key or "—"),

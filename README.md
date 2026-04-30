@@ -19,7 +19,7 @@ Kiwi TCMS ships with a single `TestCase.requirement` CharField (max 255 characte
 
 This plugin adds that layer alongside the existing `TestCase.requirement` CharField (which is left untouched for backward-compat).
 
-## Features (v0.2.0)
+## Features
 
 ### Registry, list & detail
 
@@ -37,6 +37,10 @@ Requirement → Test case → Test plan, filterable by product / project / featu
 
 ![Traceability Sankey diagram](https://raw.githubusercontent.com/veenone/kiwi-tcms-requirements/main/docs/screenshots/03-traceability.png)
 
+A second Sankey view added in **v0.4.1** flows **source document → requirement → test case** so you can see at a glance which controlled documents (RFPs, specifications, brand guidelines) are actually exercised by tests. Requirements without a source document fall under a *(no source document)* node so the gap is obvious.
+
+![Sankey grouped by source document](https://raw.githubusercontent.com/veenone/kiwi-tcms-requirements/main/docs/screenshots/10-traceability-document.png)
+
 ### Coverage dashboard
 
 Coverage %, orphan requirements, suspect links, plus donuts and bars for status / priority / level / category breakdown. ASIL / DAL / IEC 62304 safety-distribution chart shown only when at least one requirement has safety classification.
@@ -44,6 +48,22 @@ Coverage %, orphan requirements, suspect links, plus donuts and bars for status 
 ![Dashboard with charts](https://raw.githubusercontent.com/veenone/kiwi-tcms-requirements/main/docs/screenshots/02-dashboard.png)
 
 Export the dashboard snapshot to DOCX or PDF directly from the page header.
+
+### Programmes / projects (v0.3.0)
+
+A `Project` is a programme record scoped to a Kiwi `Product`. Each project carries status, owner, stakeholders, target / actual end dates, JIRA project key, an open-ended `external_refs` JSON map, and an M2M to Kiwi `TestPlan`s for in-scope test work. The list view is a card grid with status pills, owner, dates, and live coverage% per project.
+
+![Projects card grid](https://raw.githubusercontent.com/veenone/kiwi-tcms-requirements/main/docs/screenshots/11-projects-list.png)
+
+The detail page surfaces programme metadata, a project-scoped coverage donut + orphan / suspect counts, the linked plans, the requirements list, a project-scoped mini-Sankey, and one-click DOCX / PDF exports for just that project. Create / edit / delete is in-page (no admin round-trip needed).
+
+![Project detail page](https://raw.githubusercontent.com/veenone/kiwi-tcms-requirements/main/docs/screenshots/12-project-detail.png)
+
+### Document fields & dynamic custom fields (v0.4.0)
+
+Each requirement now carries optional `document_file_name` and `document_title` fields under the *Taxonomy* fieldset, capturing the controlled document the requirement was sourced from (a `RequirementSource` is the catalog entry; these fields are the per-requirement provenance). Both fields round-trip through CSV / XLSX import + export and are first-class filterable columns.
+
+For organisation-specific metadata that doesn't warrant a schema migration, admins can register `CustomFieldDefinition` rows from Django admin (text / int / date / choice / bool). Each definition shows as a real form input on the requirement page and persists to the existing `Requirement.external_refs` JSON column — so adding a field never costs a migration.
 
 ### Authoring
 
@@ -151,7 +171,7 @@ The mapping merges over the defaults — only declare what you want to change. `
 
 ## Demo data
 
-Seeds 12 demo requirements across 3 features with a `stakeholder → system → software` decomposition chain and mixed link types so the Sankey and dashboard have something to show:
+Seeds 12 demo requirements across 3 features with a `stakeholder → system → software` decomposition chain, mixed link types, and realistic source-document titles so both Sankey views and the dashboard have something to show:
 
 ```bash
 ./manage.py seed_demo_requirements
@@ -161,6 +181,12 @@ Flags:
 - `--product "Infotainment ECU"` — scope under a specific product (defaults to first)
 - `--cases 8` — number of TestCases to link (default 8)
 - `--flush` — delete previous `DEMO-*` rows before re-seeding
+
+For an end-to-end demo with projects, baselines, and custom fields wired up too:
+
+```bash
+./manage.py seed_demo_all
+```
 
 ## Permissions
 

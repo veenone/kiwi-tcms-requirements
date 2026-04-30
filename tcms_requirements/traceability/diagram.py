@@ -11,9 +11,10 @@ Bugs are connected through the plan whose TestExecution logged them
 in their own column 3. Cases with no plan are still shown — their
 chain just terminates at column 1.
 
-Two alternative builders exist for the extra views:
+Three alternative builders exist for the extra views:
     build_feature_sankey_payload        — Req → Feature → Case
     build_verification_sankey_payload   — Req → Case → Latest exec status
+    build_document_sankey_payload       — Document → Requirement → Case
 
 Edge weight is `1` per link. D3-Sankey assigns node ordinals
 automatically; we feed it `{nodes: [{name}], links: [{source, target, value}]}`
@@ -337,6 +338,97 @@ def build_verification_sankey_payload(filters=None) -> dict:
         "nodes": nodes, "links": links_out,
         "filters": filters or {}, "truncated": truncated,
     }
+
+
+def build_document_sankey_payload(filters=None) -> dict:
+    """3-column flow: Source document → Requirement → TestCase.
+
+    Groups requirements by their `document_title` (the formal title of the
+    source document). Falls back to `document_file_name` when the title
+    is blank, and to `(no source document)` when both are blank — the
+    fallback node is what makes the gap visible.
+
+    Useful for the audit question "which source documents have weak test
+    coverage?" — a document node with many requirements feeding it but
+    few cases on the right is a coverage hot spot.
+    """
+    scoped = _apply_filters(Requirement.objects.all(), filters)
+    requirements = list(scoped.only(
+        "pk", "identifier", "title", "document_title", "document_file_name",
+    ))
+    requirement_ids = [r.pk for r in requirements]
+
+    links_qs = (
+        RequirementTestCaseLink.objects
+        .filter(requirement_id__in=requirement_ids)
+        .select_related("case")
+    )
+    case_summaries = {
+        case_id: (summary or "")
+        for case_id, summary in links_qs.values_list("case_id", "case__summary")
+    }
+
+    nodes, node_index, links_out = [], {}, []
+
+    def _add(key, label, kind):
+        if key in node_index:
+            return node_index[key]
+        node_index[key] = len(nodes)
+        nodes.append({"name": label, "kind": kind, "id": key})
+        return node_index[key]
+
+    req_to_doc_idx = {}
+    for req in requirements:
+        doc_label = _document_label(req)
+        doc_idx = _add(("doc", doc_label), doc_label, "document")
+        req_idx = _add(("req", req.pk), f"{req.identifier} {req.title}", "requirement")
+        # One edge per requirement onto its source document; weight 1.
+        # Aggregating by document is what makes the visual width meaningful.
+        links_out.append({
+            "source": doc_idx, "target": req_idx, "value": 1,
+            "link_type": "cites_document", "suspect": False,
+        })
+        req_to_doc_idx[req.pk] = req_idx
+
+    for link in links_qs:
+        req_idx = req_to_doc_idx.get(link.requirement_id)
+        if req_idx is None:
+            continue
+        case_idx = _add(
+            ("case", link.case_id),
+            f"TC-{link.case_id} {case_summaries.get(link.case_id, '')}".strip(),
+            "case",
+        )
+        links_out.append({
+            "source": req_idx, "target": case_idx, "value": 1,
+            "link_type": link.link_type, "suspect": link.suspect,
+        })
+
+    truncated = False
+    if len(nodes) > MAX_NODES:
+        truncated = True
+        nodes, links_out = _truncate(nodes, links_out, MAX_NODES)
+
+    return {
+        "nodes": nodes, "links": links_out,
+        "filters": filters or {}, "truncated": truncated,
+    }
+
+
+def _document_label(req) -> str:
+    """Pick the display label for a requirement's source document.
+
+    Prefers the formal title; falls back to the file name; final fallback
+    is the literal "(no source document)" so the gap is rendered as a node
+    rather than dropping the requirement silently.
+    """
+    title = (req.document_title or "").strip()
+    if title:
+        return title
+    file_name = (req.document_file_name or "").strip()
+    if file_name:
+        return file_name
+    return "(no source document)"
 
 
 # ── helpers for the new views ────────────────────────────────────────
