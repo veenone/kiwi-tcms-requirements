@@ -802,11 +802,23 @@ class ProjectDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView)
 
 
 class ProjectExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
-    """Download a project's requirements + metadata as DOCX or PDF."""
+    """Download a project's requirements + metadata as DOCX or PDF.
+
+    GET delivers a table-only export (works from any link). POST accepts a
+    ``svg`` field carrying the live-rendered project Sankey, which is
+    rasterised and embedded above the requirements table — same flow as
+    the traceability-page export.
+    """
     permission_required = "tcms_requirements.view_requirement"
     ALLOWED_FORMATS = {"docx", "pdf"}
 
     def get(self, request, pk, fmt):
+        return self._export(request, pk, fmt, svg_blob="")
+
+    def post(self, request, pk, fmt):
+        return self._export(request, pk, fmt, svg_blob=request.POST.get("svg", "") or "")
+
+    def _export(self, request, pk, fmt, svg_blob):
         if fmt not in self.ALLOWED_FORMATS:
             return HttpResponseBadRequest(
                 f"Format must be one of {sorted(self.ALLOWED_FORMATS)}."
@@ -818,6 +830,10 @@ class ProjectExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
         from tcms_requirements.exports.docx_renderer import build_project_docx  # noqa: WPS433
         from tcms_requirements.exports.pdf_renderer import build_project_pdf  # noqa: WPS433
+        from tcms_requirements.traceability.report import (  # noqa: WPS433
+            svg_to_png_bytes,
+            svg_to_rlg,
+        )
 
         snapshot = dashboard_snapshot(filters={"project": project.pk})
         requirements = (
@@ -831,13 +847,15 @@ class ProjectExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
         stamp = datetime.now().strftime("%Y%m%d")
         slug = project.code or f"project-{project.pk}"
         if fmt == "docx":
-            payload = build_project_docx(project, requirements, snapshot)
+            png = svg_to_png_bytes(svg_blob) if svg_blob else None
+            payload = build_project_docx(project, requirements, snapshot, diagram_png=png)
             return RequirementExportView._binary_download(
                 payload,
                 f"project-{slug}-{stamp}.docx",
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
-        payload = build_project_pdf(project, requirements, snapshot)
+        rlg = svg_to_rlg(svg_blob) if svg_blob else None
+        payload = build_project_pdf(project, requirements, snapshot, diagram_rlg=rlg)
         return RequirementExportView._binary_download(
             payload,
             f"project-{slug}-{stamp}.pdf",

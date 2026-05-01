@@ -4,7 +4,10 @@
 {% block title %}{{ project.name }}{% endblock %}
 
 {% block contents %}
-<div class="container-fluid" id="requirements-project-detail" data-project-id="{{ project.pk }}">
+<div class="container-fluid" id="requirements-project-detail"
+     data-project-id="{{ project.pk }}"
+     data-export-docx-url="{% url 'requirement-project-export' project.pk 'docx' %}"
+     data-export-pdf-url="{% url 'requirement-project-export' project.pk 'pdf' %}">
   <div class="page-header">
     <h1>
       {{ project.name }}
@@ -48,6 +51,15 @@
           <i class="fa fa-download"></i> {% trans "Export" %} <span class="caret"></span>
         </button>
         <ul class="dropdown-menu dropdown-menu-right">
+          <li class="dropdown-header">{% trans "With Sankey diagram" %}</li>
+          <li><a href="#" id="project-export-docx-with-sankey">
+            <i class="fa fa-file-word-o"></i> DOCX
+          </a></li>
+          <li><a href="#" id="project-export-pdf-with-sankey">
+            <i class="fa fa-file-pdf-o"></i> PDF
+          </a></li>
+          <li role="separator" class="divider"></li>
+          <li class="dropdown-header">{% trans "Table only (no diagram)" %}</li>
           <li><a href="{% url 'requirement-project-export' project.pk 'docx' %}">
             <i class="fa fa-file-word-o"></i> DOCX
           </a></li>
@@ -142,7 +154,11 @@
       <strong>{% trans "Traceability (project-scoped)" %}</strong>
     </div>
     <div class="panel-body">
-      <div id="project-sankey" style="min-height:280px;"></div>
+      <div id="project-sankey-wrap">
+        <div id="project-sankey-status" class="text-muted"></div>
+        <div id="project-sankey-legend" class="sankey-legend" aria-label="{% trans 'Sankey colour legend' %}"></div>
+        <svg id="project-sankey"></svg>
+      </div>
       <script type="application/json" id="project-sankey-payload">{{ sankey_payload_json|safe }}</script>
     </div>
   </div>
@@ -183,7 +199,19 @@
     </div>
     {% endif %}
   </div>
+
+  <!-- Hidden form used by the Export-with-Sankey buttons. JS captures the
+       live SVG into the hidden field and POSTs to the project export URL. -->
+  <form id="project-export-form" method="post" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="svg" id="project-export-svg">
+  </form>
 </div>
 
 <link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">
+<script src="{% static 'tcms_requirements/vendor/d3.v7.min.js' %}"></script>
+<script src="{% static 'tcms_requirements/vendor/d3-sankey.min.js' %}"></script>
+<script src="{% static 'tcms_requirements/js/traceability.js' %}"></script>
+<script src="{% static 'tcms_requirements/js/traceability_export.js' %}"></script>
+<script src="{% static 'tcms_requirements/js/project_detail.js' %}"></script>
 {% endblock %}

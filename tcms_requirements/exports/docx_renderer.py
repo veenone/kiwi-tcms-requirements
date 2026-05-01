@@ -231,9 +231,14 @@ def build_traceability_docx(rows, *, title="Requirements traceability report", d
     return _dump(doc)
 
 
-def build_project_docx(project, requirements, snapshot) -> bytes:
-    """Project programme report: metadata header + scoped requirement list."""
+def build_project_docx(project, requirements, snapshot, *, diagram_png=None) -> bytes:
+    """Project programme report: metadata header + scoped requirement list.
+
+    ``diagram_png`` is optional PNG bytes from the project-scoped Sankey;
+    when supplied, embedded between Coverage and Requirements sections.
+    """
     from docx import Document  # noqa: WPS433
+    from docx.shared import Inches  # noqa: WPS433
 
     doc = Document()
     doc.add_heading(f"Project: {project.name}", level=0)
@@ -252,6 +257,21 @@ def build_project_docx(project, requirements, snapshot) -> bytes:
         ("Orphan requirements", (snapshot or {}).get("orphan_requirements", 0)),
         ("Suspect links", (snapshot or {}).get("suspect_link_count", 0)),
     ])
+
+    if diagram_png:
+        _add_heading(doc, "Traceability diagram", level=1)
+        try:
+            doc.add_picture(io.BytesIO(diagram_png), width=Inches(6.5))
+            doc.add_paragraph(
+                "Project-scoped Sankey rendered from the browser at the time "
+                "of export. Blue = requirements, orange = test cases, "
+                "green = test plans, purple = bugs, red strokes = suspect links."
+            )
+        except Exception as exc:  # noqa: BLE001 — broken PNG shouldn't drop the report
+            import logging  # noqa: WPS433
+            logging.getLogger("tcms_requirements").warning(
+                "DOCX add_picture failed: %s — continuing without diagram.", exc,
+            )
 
     plans = list(project.test_plans.all())
     if plans:

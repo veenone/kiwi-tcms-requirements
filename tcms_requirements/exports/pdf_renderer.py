@@ -207,8 +207,13 @@ def build_traceability_pdf(rows, *, title="Requirements traceability report", di
     return buf.getvalue()
 
 
-def build_project_pdf(project, requirements, snapshot) -> bytes:
-    """Project programme report: metadata header + scoped requirement list."""
+def build_project_pdf(project, requirements, snapshot, *, diagram_rlg=None) -> bytes:
+    """Project programme report: metadata header + scoped requirement list.
+
+    ``diagram_rlg`` is an optional reportlab Graphics Drawing produced by
+    ``traceability.report.svg_to_rlg``; when supplied, embedded between
+    Coverage and Test plans sections.
+    """
     from reportlab.lib.pagesizes import A4  # noqa: WPS433
     from reportlab.platypus import SimpleDocTemplate
 
@@ -239,6 +244,23 @@ def build_project_pdf(project, requirements, snapshot) -> bytes:
         ["Suspect links", str((snapshot or {}).get("suspect_link_count", 0))],
     ], col_widths=[220, 220]))
     story.append(_spacer())
+
+    if diagram_rlg is not None:
+        from reportlab.lib.units import cm  # noqa: WPS433
+
+        usable_width_pts = A4[0] - (2 * cm)
+        scale = usable_width_pts / max(diagram_rlg.width, 1)
+        diagram_rlg.width = diagram_rlg.width * scale
+        diagram_rlg.height = diagram_rlg.height * scale
+        diagram_rlg.scale(scale, scale)
+        story.append(_heading("Traceability diagram", level=2))
+        story.append(diagram_rlg)
+        story.append(_para(
+            "Project-scoped Sankey rendered from the browser at the time "
+            "of export. Blue = requirements, orange = test cases, "
+            "green = test plans, purple = bugs, red strokes = suspect links."
+        ))
+        story.append(_spacer(12))
 
     plans = list(project.test_plans.all())
     if plans:

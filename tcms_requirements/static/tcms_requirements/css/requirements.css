@@ -315,8 +315,11 @@
     line-height: 1.3;
 }
 
-/* Sankey traceability diagram container. */
-#requirements-sankey-wrap {
+/* Sankey diagram container — used by both the dedicated traceability
+   page (#requirements-sankey-wrap) and the project detail page
+   (#project-sankey-wrap). */
+#requirements-sankey-wrap,
+#project-sankey-wrap {
     background: #fff;
     border: 1px solid #ededed;
     border-radius: 3px;
@@ -359,12 +362,14 @@
     border-radius: 0;
 }
 
-#requirements-sankey text {
+#requirements-sankey text,
+#project-sankey text {
     fill: #292e34;
     pointer-events: none;
 }
 
-#requirements-sankey-status {
+#requirements-sankey-status,
+#project-sankey-status {
     margin-bottom: 8px;
     font-size: 12px;
 }
