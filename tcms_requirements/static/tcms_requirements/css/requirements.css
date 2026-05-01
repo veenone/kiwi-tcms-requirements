@@ -393,6 +393,40 @@
     margin-bottom: 0;
 }
 
+/* Bootstrap's dl-horizontal floats dt at 160px width — too wide for a
+   280px kanban card, which forces dd content to wrap mid-value. Inside
+   a kanban card, switch to a tight 2-column grid so each row fits. */
+.requirements-kanban-cards .requirements-project-meta {
+    display: grid;
+    grid-template-columns: minmax(60px, max-content) 1fr;
+    column-gap: 10px;
+    row-gap: 4px;
+    margin: 0;
+}
+
+.requirements-kanban-cards .requirements-project-meta dt,
+.requirements-kanban-cards .requirements-project-meta dd {
+    float: none;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    text-align: left;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.requirements-kanban-cards .requirements-project-meta dt {
+    color: #72767b;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Risk pills can stack on narrow cards — one per line is fine. */
+.requirements-kanban-cards .requirements-project-meta dd .label {
+    display: inline-block;
+    margin: 1px 0;
+}
+
 .requirements-kanban-empty {
     padding: 20px 8px;
     text-align: center;
