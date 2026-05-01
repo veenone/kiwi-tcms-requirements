@@ -113,6 +113,62 @@ The package exposes a `kiwitcms.plugins` entry point; Kiwi discovers it automati
 
 That's it. The plugin registers its menu entries, admin tabs, and middleware in `apps.py::ready()` — no manual `INSTALLED_APPS` or `MIDDLEWARE` editing required.
 
+### Sankey-in-export extras (optional)
+
+Embedding the live-rendered Sankey into DOCX / PDF exports needs `svglib` plus `pycairo` so reportlab's `renderPM` can rasterise the SVG to PNG. PDF exports embed the SVG natively (no PNG needed) and work without these extras — only DOCX exports degrade to *table-only* when they're missing.
+
+`pycairo` is a binding around the system **cairo** library, so install the OS package first, then the Python wheels:
+
+**Linux (Debian / Ubuntu / WSL):**
+
+```bash
+sudo apt-get update
+sudo apt-get install -y libcairo2-dev pkg-config python3-dev
+pip install "kiwitcms-requirements[diagrams]"
+```
+
+**Linux (Fedora / RHEL / Rocky):**
+
+```bash
+sudo dnf install -y cairo-devel pkgconf-pkg-config python3-devel
+pip install "kiwitcms-requirements[diagrams]"
+```
+
+**Linux (Alpine):**
+
+```bash
+sudo apk add cairo-dev pkgconf python3-dev build-base
+pip install "kiwitcms-requirements[diagrams]"
+```
+
+**Windows:**
+
+`pycairo` ships pre-built wheels for CPython 3.9+ on Windows x64, so no system install is needed in most cases:
+
+```powershell
+pip install "kiwitcms-requirements[diagrams]"
+```
+
+If pip can't find a wheel (PyPy, ARM64, or older CPython), fall back to the unofficial Christoph Gohlke wheels:
+
+```powershell
+# Replace cp311 / win_amd64 with your CPython tag.
+pip install https://download.lfd.uci.edu/pythonlibs/archived/pycairo-1.26.0-cp311-cp311-win_amd64.whl
+pip install "kiwitcms-requirements[diagrams]"
+```
+
+For a fully native Windows build (advanced) you'd need MSVC and the [GTK runtime](https://gtk-rs.org/gtk4-rs/stable/latest/book/installation_windows.html) for cairo headers — wheels are strongly preferred.
+
+**Verifying the install:**
+
+```bash
+python -c "from svglib.svglib import svg2rlg; from reportlab.graphics import renderPM; print('OK')"
+```
+
+If you see `RenderPMError: cannot import desired renderPM backend rlPyCairo`, cairo isn't on the loader path; revisit the OS-package step.
+
+**Skip the extras altogether** if you only need PDF exports with the diagram, or DOCX exports without — the plugin gracefully degrades and logs `svglib or reportlab.renderPM unavailable` to `tcms_requirements` logger when it falls back.
+
 ## Level profiles
 
 The `RequirementLevel` table is configurable. The seed migration applies a profile based on your `REQUIREMENTS_LEVEL_PROFILE` setting (default: `aspice`):
@@ -205,8 +261,11 @@ Runtime (installed automatically):
 - markdown, requests
 - openpyxl (XLSX import/templates)
 - python-docx (DOCX reports)
-- reportlab (PDF reports)
-- svglib, Pillow (Sankey → DOCX/PDF image embedding)
+- reportlab (PDF reports — also embeds Sankey directly into PDF, no system deps)
+
+Optional `[diagrams]` extra (`pip install "kiwitcms-requirements[diagrams]"`):
+- svglib, Pillow — for embedding the Sankey image into **DOCX** exports
+- pycairo (transitive) — needs system **cairo** headers; see the *Sankey-in-export extras* section above for the exact OS package per platform.
 
 ## Running the test suite
 
