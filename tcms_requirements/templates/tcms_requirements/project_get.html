@@ -12,33 +12,55 @@
       <span class="label requirements-project-pill requirements-project-pill-{{ project.status }}">
         {{ project.get_status_display }}
       </span>
-      <div class="btn-group pull-right">
-        <a href="{% url 'requirement-project-list' %}" class="btn btn-link">
-          <i class="fa fa-arrow-left"></i> {% trans "All projects" %}
-        </a>
-        <a href="{% url 'requirement-project-edit' project.pk %}" class="btn btn-default">
+    </h1>
+    <div class="requirements-page-toolbar">
+      <a href="{% url 'requirement-project-list' %}" class="btn btn-link" title="{% trans 'Back to projects list' %}">
+        <i class="fa fa-arrow-left"></i> {% trans "All projects" %}
+      </a>
+
+      <div class="btn-group">
+        <a href="{% url 'requirement-project-edit' project.pk %}" class="btn btn-primary">
           <i class="fa fa-edit"></i> {% trans "Edit" %}
         </a>
-        <a href="{% url 'requirement-project-delete' project.pk %}" class="btn btn-default">
-          <i class="fa fa-trash"></i> {% trans "Delete" %}
-        </a>
-        <a href="{% url 'requirement-list' %}?project={{ project.pk }}" class="btn btn-default">
-          <i class="fa fa-list"></i> {% trans "Filter requirements" %}
-        </a>
-        <a href="{% url 'requirement-project-baseline-list' project.pk %}" class="btn btn-default">
-          <i class="fa fa-camera"></i> {% trans "Baselines" %}
-        </a>
-        <a href="{% url 'requirement-project-evidence-pack' project.pk %}" class="btn btn-default">
-          <i class="fa fa-archive"></i> {% trans "Evidence pack" %}
-        </a>
-        <a href="{% url 'requirement-project-export' project.pk 'docx' %}" class="btn btn-default">
-          <i class="fa fa-file-word-o"></i> DOCX
-        </a>
-        <a href="{% url 'requirement-project-export' project.pk 'pdf' %}" class="btn btn-default">
-          <i class="fa fa-file-pdf-o"></i> PDF
+        <a href="{% url 'requirement-project-delete' project.pk %}" class="btn btn-default" title="{% trans 'Delete this project' %}">
+          <i class="fa fa-trash"></i>
         </a>
       </div>
-    </h1>
+
+      <div class="requirements-toolbar-spacer"></div>
+
+      <div class="btn-group">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <i class="fa fa-eye"></i> {% trans "Related" %} <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+          <li><a href="{% url 'requirement-list' %}?project={{ project.pk }}">
+            <i class="fa fa-list"></i> {% trans "Filter requirements" %}
+          </a></li>
+          <li><a href="{% url 'requirement-project-baseline-list' project.pk %}">
+            <i class="fa fa-camera"></i> {% trans "Baselines" %}
+          </a></li>
+        </ul>
+      </div>
+
+      <div class="btn-group">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <i class="fa fa-download"></i> {% trans "Export" %} <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-right">
+          <li><a href="{% url 'requirement-project-export' project.pk 'docx' %}">
+            <i class="fa fa-file-word-o"></i> DOCX
+          </a></li>
+          <li><a href="{% url 'requirement-project-export' project.pk 'pdf' %}">
+            <i class="fa fa-file-pdf-o"></i> PDF
+          </a></li>
+          <li role="separator" class="divider"></li>
+          <li><a href="{% url 'requirement-project-evidence-pack' project.pk %}">
+            <i class="fa fa-archive"></i> {% trans "Evidence pack (.zip)" %}
+          </a></li>
+        </ul>
+      </div>
+    </div>
   </div>
 
   <div class="row requirements-row-equal">

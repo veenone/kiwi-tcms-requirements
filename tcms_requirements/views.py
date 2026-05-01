@@ -1132,11 +1132,11 @@ class ProjectEvidencePackView(LoginRequiredMixin, PermissionRequiredMixin, View)
             )
 
             csv_buf = io.StringIO()
-            write_csv(csv_buf, requirements)
+            write_csv(requirements, csv_buf)
             zf.writestr("requirements.csv", csv_buf.getvalue().encode("utf-8"))
 
             jira_buf = io.StringIO()
-            write_jira_csv(jira_buf, requirements)
+            write_jira_csv(requirements, jira_buf)
             zf.writestr("requirements-jira.csv", jira_buf.getvalue().encode("utf-8"))
 
             zf.writestr(

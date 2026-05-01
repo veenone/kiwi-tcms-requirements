@@ -9,15 +9,16 @@
     <h1>
       {% trans "Baselines" %}
       <small>{{ project.name }}{% if project.code %} · <code>{{ project.code }}</code>{% endif %}</small>
-      <div class="btn-group pull-right">
-        <a href="{% url 'requirement-project-get' project.pk %}" class="btn btn-link">
-          <i class="fa fa-arrow-left"></i> {% trans "Back to project" %}
-        </a>
-        <a href="{% url 'requirement-project-baseline-new' project.pk %}" class="btn btn-primary">
-          <i class="fa fa-camera"></i> {% trans "New baseline" %}
-        </a>
-      </div>
     </h1>
+    <div class="requirements-page-toolbar">
+      <a href="{% url 'requirement-project-get' project.pk %}" class="btn btn-link">
+        <i class="fa fa-arrow-left"></i> {% trans "Back to project" %}
+      </a>
+      <div class="requirements-toolbar-spacer"></div>
+      <a href="{% url 'requirement-project-baseline-new' project.pk %}" class="btn btn-primary">
+        <i class="fa fa-camera"></i> {% trans "New baseline" %}
+      </a>
+    </div>
   </div>
 
   {% if not baselines %}

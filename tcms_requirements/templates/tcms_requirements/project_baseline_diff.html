@@ -9,12 +9,12 @@
     <h1>
       {% trans "Baseline diff" %}
       <small>{{ project.name }} · <code>{{ base.name }}</code> ↔ <code>{{ other.name }}</code></small>
-      <div class="btn-group pull-right">
-        <a href="{% url 'requirement-project-baseline-get' project.pk base.pk %}" class="btn btn-link">
-          <i class="fa fa-arrow-left"></i> {% trans "Back to baseline" %}
-        </a>
-      </div>
     </h1>
+    <div class="requirements-page-toolbar">
+      <a href="{% url 'requirement-project-baseline-get' project.pk base.pk %}" class="btn btn-link">
+        <i class="fa fa-arrow-left"></i> {% trans "Back to baseline" %}
+      </a>
+    </div>
   </div>
 
   <div class="row requirements-row-equal">

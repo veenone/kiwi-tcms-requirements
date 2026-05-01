@@ -4,8 +4,15 @@ The main Requirement editing UI lives in plugin views under /requirements/.
 The admin is scoped to the taxonomy (category / source / level / project /
 feature) plus a read-only Requirement admin for back-office inspection.
 """
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.shortcuts import redirect, render
+from django.urls import path, reverse
 
+from tcms_requirements.level_profiles import (
+    LEVEL_PROFILES,
+    PROFILE_DISPLAY,
+    detect_active_profile,
+)
 from tcms_requirements.models import (
     BaselineLinkSnapshot,
     BaselineRequirementSnapshot,
@@ -41,6 +48,94 @@ class RequirementLevelAdmin(admin.ModelAdmin):
     list_editable = ("order", "is_active")
     search_fields = ("code", "name")
     ordering = ("order", "code")
+    change_list_template = "admin/tcms_requirements/requirementlevel/change_list.html"
+
+    def get_urls(self):
+        return [
+            path(
+                "profiles/",
+                self.admin_site.admin_view(self.profiles_view),
+                name="tcms_requirements_requirementlevel_profiles",
+            ),
+        ] + super().get_urls()
+
+    def profiles_view(self, request):
+        if request.method == "POST":
+            profile_key = request.POST.get("profile", "").strip()
+            if profile_key not in LEVEL_PROFILES:
+                messages.error(request, f"Unknown profile: {profile_key!r}")
+                return redirect(request.path)
+            self._apply_profile(request, profile_key)
+            return redirect(reverse("admin:tcms_requirements_requirementlevel_changelist"))
+
+        active_profile = detect_active_profile(RequirementLevel)
+        in_use_codes = set(
+            Requirement.objects.exclude(level__isnull=True)
+            .values_list("level__code", flat=True).distinct()
+        )
+        cards = []
+        for key, rows in LEVEL_PROFILES.items():
+            cards.append({
+                "key": key,
+                "label": PROFILE_DISPLAY.get(key, key),
+                "rows": rows,
+                "is_active": key == active_profile,
+                "would_orphan": sorted(
+                    in_use_codes - {code for (code, *_r) in rows}
+                ),
+            })
+        ctx = {
+            **self.admin_site.each_context(request),
+            "title": "Requirement level profiles",
+            "cards": cards,
+            "active_profile": active_profile,
+            "in_use_codes": sorted(in_use_codes),
+            "opts": self.model._meta,
+        }
+        return render(
+            request, "admin/tcms_requirements/requirementlevel/profiles.html", ctx,
+        )
+
+    def _apply_profile(self, request, profile_key):
+        rows = LEVEL_PROFILES[profile_key]
+        target_codes = {code for (code, *_r) in rows}
+        in_use_codes = set(
+            Requirement.objects.exclude(level__isnull=True)
+            .values_list("level__code", flat=True).distinct()
+        )
+
+        for code, name, order, description in rows:
+            RequirementLevel.objects.update_or_create(
+                code=code,
+                defaults={
+                    "name": name, "order": order,
+                    "description": description, "is_active": True,
+                },
+            )
+
+        # Levels not in the profile are deactivated only if no requirement
+        # references them; orphaning live data silently is too dangerous.
+        deactivated = (
+            RequirementLevel.objects
+            .exclude(code__in=target_codes)
+            .filter(is_active=True)
+            .exclude(code__in=in_use_codes)
+            .update(is_active=False)
+        )
+        skipped = sorted(in_use_codes - target_codes)
+
+        messages.success(
+            request,
+            f"Applied profile {PROFILE_DISPLAY.get(profile_key, profile_key)}: "
+            f"{len(rows)} levels active, {deactivated} deactivated.",
+        )
+        if skipped:
+            messages.warning(
+                request,
+                f"Kept {len(skipped)} level(s) outside the profile because "
+                f"requirements still reference them: {', '.join(skipped)}. "
+                f"Reassign those requirements then re-apply to clean up.",
+            )
 
 
 @admin.register(Project)

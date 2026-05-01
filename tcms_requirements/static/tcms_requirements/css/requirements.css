@@ -140,6 +140,56 @@
     margin-left: 6px;
 }
 
+/* Unified page-toolbar — replaces the per-template "btn-group pull-right"
+   stacks. Renders as a flex row that wraps on narrow screens, separates
+   nav / primary / destructive / export clusters with breathing room, and
+   keeps the page title on the left. Add the `requirements-page-toolbar`
+   class to a wrapper element inside each .page-header h1 block. */
+.requirements-page-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin-top: 6px;
+}
+
+.requirements-page-toolbar .btn,
+.requirements-page-toolbar .btn-group > .btn {
+    font-size: 13px;
+    padding: 5px 12px;
+    line-height: 1.42857;
+}
+
+.requirements-page-toolbar .btn .fa {
+    margin-right: 4px;
+}
+
+/* Visual separators between toolbar clusters: navigation, primary action,
+   destructive, related views, exports. Each cluster gets its own
+   .btn-group; a margin-left:auto on .requirements-toolbar-spacer pushes
+   the export cluster to the right edge. */
+.requirements-toolbar-spacer {
+    flex: 1 1 0;
+}
+
+.requirements-page-toolbar .btn-link {
+    color: #292e34;
+}
+
+.requirements-page-toolbar .btn-link:hover {
+    color: #39a5dc;
+    text-decoration: none;
+}
+
+/* Compact primary CTAs on dense headers. */
+.requirements-page-toolbar .btn-primary {
+    font-weight: 500;
+}
+
+/* Drop the giant float-right pull-right pattern; the flex toolbar
+   handles alignment via order + margin-left:auto. */
+.requirements-page-toolbar .pull-right { float: none; }
+
 /* Form fieldsets — group fields by concern with subtle dividers. */
 .requirements-form .requirements-fieldset {
     border: 1px solid #ededed;

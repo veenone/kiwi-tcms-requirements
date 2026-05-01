@@ -6,23 +6,27 @@
 {% block contents %}
 <div class="container-fluid" id="requirements-dashboard">
   <div class="page-header">
-    <h1>
-      {% trans "Requirements dashboard" %}
-      <div class="btn-group pull-right">
-        <a href="{% url 'requirement-dashboard-export' 'docx' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
-           class="btn btn-default">
-          <i class="fa fa-file-word-o"></i> DOCX
-        </a>
-        <a href="{% url 'requirement-dashboard-export' 'pdf' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
-           class="btn btn-default">
-          <i class="fa fa-file-pdf-o"></i> PDF
-        </a>
-        <a href="{% url 'requirement-traceability' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
-           class="btn btn-primary">
-          <i class="fa fa-sitemap"></i> {% trans "Traceability" %}
-        </a>
+    <h1>{% trans "Requirements dashboard" %}</h1>
+    <div class="requirements-page-toolbar">
+      <a href="{% url 'requirement-traceability' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+         class="btn btn-primary">
+        <i class="fa fa-sitemap"></i> {% trans "Open traceability" %}
+      </a>
+      <div class="requirements-toolbar-spacer"></div>
+      <div class="btn-group">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <i class="fa fa-download"></i> {% trans "Export snapshot" %} <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-right">
+          <li><a href="{% url 'requirement-dashboard-export' 'docx' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
+            <i class="fa fa-file-word-o"></i> DOCX
+          </a></li>
+          <li><a href="{% url 'requirement-dashboard-export' 'pdf' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
+            <i class="fa fa-file-pdf-o"></i> PDF
+          </a></li>
+        </ul>
       </div>
-    </h1>
+    </div>
   </div>
 
   <form method="get" class="requirements-filters">

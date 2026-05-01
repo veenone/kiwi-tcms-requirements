@@ -9,20 +9,24 @@
     <h1>
       {{ view_title }}
       <small>{{ view_subtitle }}</small>
-      <div class="btn-group pull-right">
-        {% if show_export_buttons %}
-        <button type="button" class="btn btn-default" id="requirements-export-docx">
-          <i class="fa fa-file-word-o"></i> DOCX
-        </button>
-        <button type="button" class="btn btn-default" id="requirements-export-pdf">
-          <i class="fa fa-file-pdf-o"></i> PDF
-        </button>
-        {% endif %}
-        <a href="{% url 'requirement-dashboard' %}" class="btn btn-link">
-          <i class="fa fa-arrow-left"></i> {% trans "Dashboard" %}
-        </a>
-      </div>
     </h1>
+    <div class="requirements-page-toolbar">
+      <a href="{% url 'requirement-dashboard' %}" class="btn btn-link">
+        <i class="fa fa-arrow-left"></i> {% trans "Dashboard" %}
+      </a>
+      <div class="requirements-toolbar-spacer"></div>
+      {% if show_export_buttons %}
+      <div class="btn-group">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <i class="fa fa-download"></i> {% trans "Export" %} <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-right">
+          <li><a href="#" id="requirements-export-docx"><i class="fa fa-file-word-o"></i> DOCX</a></li>
+          <li><a href="#" id="requirements-export-pdf"><i class="fa fa-file-pdf-o"></i> PDF</a></li>
+        </ul>
+      </div>
+      {% endif %}
+    </div>
   </div>
 
   <!-- View switcher — card-style tiles. -->

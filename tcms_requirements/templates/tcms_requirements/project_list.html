@@ -9,10 +9,13 @@
     <h1>
       {% trans "Projects" %}
       <small>{{ cards|length }} {% trans "total" %}</small>
-      <div class="btn-group pull-right">
-        <a href="{% url 'requirement-project-new' %}" class="btn btn-primary">
-          <i class="fa fa-plus"></i> {% trans "New project" %}
-        </a>
+    </h1>
+    <div class="requirements-page-toolbar">
+      <a href="{% url 'requirement-project-new' %}" class="btn btn-primary">
+        <i class="fa fa-plus"></i> {% trans "New project" %}
+      </a>
+      <div class="requirements-toolbar-spacer"></div>
+      <div class="btn-group">
         <a href="{% url 'requirement-list' %}" class="btn btn-default">
           <i class="fa fa-list"></i> {% trans "Requirements" %}
         </a>
@@ -20,7 +23,7 @@
           <i class="fa fa-bar-chart"></i> {% trans "Dashboard" %}
         </a>
       </div>
-    </h1>
+    </div>
   </div>
 
   <form method="get" class="requirements-filters">
