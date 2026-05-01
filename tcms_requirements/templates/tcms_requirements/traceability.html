@@ -41,7 +41,7 @@
     {% endfor %}
   </div>
 
-  <form method="get" class="form-inline requirements-filters" style="margin-bottom:12px;">
+  <form method="get" class="requirements-filters">
     <div class="form-group">
       <label for="product">{% trans "Product" %}</label>
       <select name="product" id="product" class="form-control">
@@ -69,12 +69,15 @@
         {% endfor %}
       </select>
     </div>
-    <button type="submit" class="btn btn-primary">{% trans "Apply" %}</button>
-    <a href="{{ request.path }}" class="btn btn-link">{% trans "Reset" %}</a>
+    <div class="requirements-filters-actions">
+      <button type="submit" class="btn btn-primary">{% trans "Apply" %}</button>
+      <a href="{{ request.path }}" class="btn btn-link">{% trans "Reset" %}</a>
+    </div>
   </form>
 
   <div id="requirements-sankey-wrap">
     <div id="requirements-sankey-status" class="text-muted"></div>
+    <div id="requirements-sankey-legend" class="sankey-legend" aria-label="{% trans 'Sankey colour legend' %}"></div>
     <svg id="requirements-sankey"></svg>
   </div>
 </div>

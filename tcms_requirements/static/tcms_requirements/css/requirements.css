@@ -7,13 +7,54 @@
     margin-bottom: 16px;
 }
 
+/* Filter rows — every input, label, and button sits on a shared baseline.
+   Replaces Bootstrap's default form-inline spacing, which leaves the
+   buttons ahead of the field bottoms on multi-row collapses. */
+.requirements-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
 .requirements-filters .form-group {
-    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+}
+
+.requirements-filters .form-group > label {
+    font-size: 12px;
+    color: #72767b;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.requirements-filters .form-control {
+    height: 32px;
+    line-height: 1.42857;
 }
 
 .requirements-filters input[type="text"],
 .requirements-filters select {
-    min-width: 140px;
+    min-width: 160px;
+}
+
+.requirements-filters .btn {
+    height: 32px;
+    line-height: 1;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+/* Group the trailing Apply/Reset buttons into a single inline cluster
+   so they always align to the field bottoms regardless of wrap. */
+.requirements-filters-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
 }
 
 /* Shared pill style for every plugin badge (status, priority, suspect,
@@ -233,6 +274,41 @@
     overflow-x: auto;
 }
 
+/* Legend showing the kind→colour mapping above the Sankey.
+   Items wrap on small screens; only kinds present in the current
+   payload are rendered (see traceability.js::renderLegend). */
+.sankey-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding: 8px 4px;
+    margin-bottom: 8px;
+    border-bottom: 1px dashed #ededed;
+    font-size: 12px;
+    color: #72767b;
+}
+
+.sankey-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1;
+}
+
+.sankey-legend-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.sankey-legend-swatch-line {
+    width: 18px;
+    height: 3px;
+    border-radius: 0;
+}
+
 #requirements-sankey text {
     fill: #292e34;
     pointer-events: none;
@@ -248,6 +324,119 @@
 #chart-by-level, #chart-by-category,
 #chart-safety {
     min-height: 260px;
+}
+
+/* Kanban-style project index: one column per status, ordered by the
+   programme lifecycle (planning → active → on_hold → closed → cancelled).
+   Each column is a vertical lane that scrolls horizontally on overflow. */
+.requirements-kanban-board {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    align-items: flex-start;
+}
+
+.requirements-kanban-column {
+    flex: 0 0 280px;
+    min-width: 280px;
+    max-width: 320px;
+    background: #f5f7fa;
+    border: 1px solid #ededed;
+    border-radius: 4px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+}
+
+.requirements-kanban-column-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 6px 8px;
+    border-bottom: 2px solid;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #292e34;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.requirements-kanban-column-count {
+    font-size: 11px;
+    background: rgba(0, 0, 0, 0.06);
+    color: #292e34;
+    padding: 2px 8px;
+    border-radius: 10em;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+}
+
+/* Each lane carries the lifecycle accent on its header divider so the
+   column is identifiable at a glance even with the cards collapsed. */
+.requirements-kanban-column[data-status="planning"]  .requirements-kanban-column-heading { border-color: #39a5dc; }
+.requirements-kanban-column[data-status="active"]    .requirements-kanban-column-heading { border-color: #3f9c35; }
+.requirements-kanban-column[data-status="on_hold"]   .requirements-kanban-column-heading { border-color: #ec7a08; }
+.requirements-kanban-column[data-status="closed"]    .requirements-kanban-column-heading { border-color: #72767b; }
+.requirements-kanban-column[data-status="cancelled"] .requirements-kanban-column-heading { border-color: #cc0000; }
+
+.requirements-kanban-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+}
+
+.requirements-kanban-cards .requirements-project-card {
+    margin-bottom: 0;
+}
+
+.requirements-kanban-empty {
+    padding: 20px 8px;
+    text-align: center;
+    color: #9c9c9c;
+    font-style: italic;
+    font-size: 12px;
+}
+
+/* Equal-height row: every direct .panel child stretches to the height
+   of the tallest panel in the row. Use on Bootstrap rows that hold
+   side-by-side .panel cards (dashboard, project detail). */
+.requirements-row-equal {
+    display: flex;
+    flex-wrap: wrap;
+    margin-left: -15px;
+    margin-right: -15px;
+}
+
+.requirements-row-equal > [class^="col-"],
+.requirements-row-equal > [class*=" col-"] {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 16px;
+}
+
+.requirements-row-equal > [class^="col-"] > .panel,
+.requirements-row-equal > [class*=" col-"] > .panel {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* When a column has multiple stacked panels, only the last one absorbs
+   the leftover height — earlier panels keep their natural size, which
+   reads better than splitting the slack equally. */
+.requirements-row-equal > [class^="col-"] > .panel:last-child,
+.requirements-row-equal > [class*=" col-"] > .panel:last-child {
+    flex: 1 1 auto;
+    margin-bottom: 0;
+}
+
+.requirements-row-equal > [class^="col-"] > .panel > .panel-body,
+.requirements-row-equal > [class*=" col-"] > .panel > .panel-body {
+    flex: 1 1 auto;
 }
 
 /* TestCase detail page injection — the "Requirements" card added by

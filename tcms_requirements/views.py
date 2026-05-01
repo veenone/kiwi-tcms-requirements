@@ -664,29 +664,27 @@ class RequirementTraceabilityDocumentView(_BaseTraceabilityView):
 
 # ── projects (programme-record views) ────────────────────────────────
 class ProjectListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
-    """Card grid of programmes with status, owner, and coverage at a glance."""
+    """Kanban grid of programmes — one column per lifecycle status."""
     permission_required = "tcms_requirements.view_requirement"
     model = Project
     template_name = "tcms_requirements/project_list.html"
     context_object_name = "projects"
-    paginate_by = 24
+    paginate_by = None  # Kanban view shows everything; status filter narrows.
 
-    # Closed/cancelled programmes drop to the bottom; everything else
-    # sorts by status priority then product/name for a stable display.
-    _STATUS_ORDER = {
-        "active": 0,
-        "planning": 1,
-        "on_hold": 2,
-        "closed": 3,
-        "cancelled": 4,
-    }
+    # Programme lifecycle. Drives column order on the Kanban board and
+    # the within-status sort fallback on the legacy card grid.
+    _LIFECYCLE = ("planning", "active", "on_hold", "closed", "cancelled")
 
     def get_queryset(self):
-        return (
+        qs = (
             Project.objects
             .select_related("product", "owner")
             .prefetch_related("test_plans", "stakeholders")
         )
+        status = self.request.GET.get("status", "").strip()
+        if status and status in dict(Project.STATUS_CHOICES):
+            qs = qs.filter(status=status)
+        return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -701,11 +699,31 @@ class ProjectListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 "suspects": snapshot["suspect_link_count"],
             })
         cards.sort(key=lambda c: (
-            self._STATUS_ORDER.get(c["project"].status, 99),
             c["project"].product.name,
             c["project"].name,
         ))
+
+        active_status = self.request.GET.get("status", "").strip()
+        # When a status filter is active, only show that one column.
+        # Otherwise render every lifecycle column so empty lanes still
+        # signal "no work in this stage" instead of disappearing.
+        visible_lifecycle = (
+            (active_status,) if active_status in self._LIFECYCLE else self._LIFECYCLE
+        )
+
+        status_labels = dict(Project.STATUS_CHOICES)
+        columns = []
+        for status in visible_lifecycle:
+            columns.append({
+                "key": status,
+                "label": status_labels.get(status, status),
+                "cards": [c for c in cards if c["project"].status == status],
+            })
+
         ctx["cards"] = cards
+        ctx["columns"] = columns
+        ctx["active_status"] = active_status
+        ctx["status_choices"] = Project.STATUS_CHOICES
         return ctx
 
 

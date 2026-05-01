@@ -82,11 +82,86 @@
         status_idle: "#bcbcbc"
     };
 
+    var kindLabel = {
+        requirement: "Requirement",
+        case: "Test case",
+        plan: "Test plan",
+        bug: "Bug (open)",
+        feature: "Feature",
+        document: "Source document",
+        status_passed: "Passed",
+        status_failed: "Failed",
+        status_blocked: "Blocked",
+        status_untested: "Untested",
+        status_idle: "Idle"
+    };
+
     function nodeFill(d) {
         if (d.kind === "bug" && d.is_open === false) {
             return "#888";
         }
         return kindColour[d.kind] || "#888";
+    }
+
+    renderLegend(payload.nodes);
+
+    function renderLegend(nodes) {
+        var host = document.getElementById("requirements-sankey-legend");
+        if (!host) { return; }
+        host.innerHTML = "";
+
+        var seen = {};
+        var hasClosedBug = false;
+        nodes.forEach(function (n) {
+            var key = n.kind;
+            if (n.kind === "bug" && n.is_open === false) {
+                hasClosedBug = true;
+                return;
+            }
+            seen[key] = true;
+        });
+
+        Object.keys(seen).forEach(function (kind) {
+            var item = document.createElement("span");
+            item.className = "sankey-legend-item";
+            var swatch = document.createElement("span");
+            swatch.className = "sankey-legend-swatch";
+            swatch.style.background = kindColour[kind] || "#888";
+            var label = document.createElement("span");
+            label.textContent = kindLabel[kind] || kind;
+            item.appendChild(swatch);
+            item.appendChild(label);
+            host.appendChild(item);
+        });
+
+        if (hasClosedBug) {
+            var closed = document.createElement("span");
+            closed.className = "sankey-legend-item";
+            var sw = document.createElement("span");
+            sw.className = "sankey-legend-swatch";
+            sw.style.background = "#888";
+            var lbl = document.createElement("span");
+            lbl.textContent = "Bug (closed)";
+            closed.appendChild(sw);
+            closed.appendChild(lbl);
+            host.appendChild(closed);
+        }
+
+        // Suspect-link indicator is a stroke colour, not a node kind, so
+        // only surface it when at least one suspect link is present.
+        var suspect = (payload.links || []).some(function (l) { return l.suspect; });
+        if (suspect) {
+            var item = document.createElement("span");
+            item.className = "sankey-legend-item";
+            var sw2 = document.createElement("span");
+            sw2.className = "sankey-legend-swatch sankey-legend-swatch-line";
+            sw2.style.background = "#cc0000";
+            var lbl2 = document.createElement("span");
+            lbl2.textContent = "Suspect link";
+            item.appendChild(sw2);
+            item.appendChild(lbl2);
+            host.appendChild(item);
+        }
     }
 
     svg.append("g")
