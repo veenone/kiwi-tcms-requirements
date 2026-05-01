@@ -13,7 +13,7 @@
 {% block content %}
 <style>
   .lp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 12px; }
-  .lp-card { border: 1px solid #ddd; border-radius: 6px; padding: 16px; background: #fff; display: flex; flex-direction: column; }
+  .lp-card { border: 1px solid #ddd; border-radius: 6px; padding: 16px; background: #fff; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; }
   .lp-card.active { border-color: #79aec8; box-shadow: 0 0 0 2px rgba(121,174,200,0.18); }
   .lp-card h2 { font-size: 16px; margin: 0 0 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .lp-card .lp-badge { font-size: 11px; padding: 2px 8px; border-radius: 10em; background: #79aec8; color: #fff; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -21,9 +21,40 @@
   .lp-card ol { margin: 10px 0 0; padding-left: 20px; flex: 1; }
   .lp-card ol li { margin-bottom: 4px; }
   .lp-card ol li code { font-size: 11px; color: #888; }
-  .lp-card .lp-warning { background: #fdf2e9; border: 1px solid #f0ad4e; color: #8a4b08; padding: 8px 10px; border-radius: 4px; font-size: 12px; margin-top: 10px; }
-  .lp-card form { margin-top: 12px; }
-  .lp-card .button { width: 100%; }
+  .lp-card .lp-warning { background: #fdf2e9; border: 1px solid #f0ad4e; color: #8a4b08; padding: 8px 10px; border-radius: 4px; font-size: 12px; margin-top: 10px; word-break: break-word; }
+  .lp-card form { margin-top: 12px; width: 100%; }
+  /* Override Grappelli/Django admin .button quirks (box-shadow inset,
+     extra padding, ::before pseudo-element) that make the button leak
+     past the card edges. Constrain it to its content box. */
+  .lp-card form .lp-apply-btn {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    margin: 0;
+    border: 1px solid #79aec8;
+    background: #79aec8;
+    color: #fff;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: center;
+    box-shadow: none;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .lp-card form .lp-apply-btn:hover:not(:disabled) {
+    background: #609ab6;
+    border-color: #609ab6;
+  }
+  .lp-card form .lp-apply-btn:disabled {
+    background: #e0e7eb;
+    border-color: #cfd6da;
+    color: #6c757d;
+    cursor: not-allowed;
+  }
 </style>
 
 <h1>{% trans "Apply a level profile" %}</h1>
@@ -67,7 +98,7 @@
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="profile" value="{{ card.key }}">
-      <button type="submit" class="button {% if card.is_active %}default{% endif %}"
+      <button type="submit" class="lp-apply-btn"
               {% if card.is_active %}disabled{% endif %}>
         {% if card.is_active %}{% trans "Currently applied" %}{% else %}{% trans "Apply this profile" %}{% endif %}
       </button>

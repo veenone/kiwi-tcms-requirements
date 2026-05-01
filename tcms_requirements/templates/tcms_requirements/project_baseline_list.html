@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block title %}{% trans "Baselines" %} · {{ project.name }}{% endblock %}
 
@@ -8,7 +8,7 @@
   <div class="page-header">
     <h1>
       {% trans "Baselines" %}
-      <small>{{ project.name }}{% if project.code %} · <code>{{ project.code }}</code>{% endif %}</small>
+      <small>{{ project.name }}{% if project.code %} · <code>{{ project.code }}</code>{% endif %} · {{ baselines|length }} {% trans "total" %}</small>
     </h1>
     <div class="requirements-page-toolbar">
       <a href="{% url 'requirement-project-get' project.pk %}" class="btn btn-link">
@@ -16,53 +16,74 @@
       </a>
       <div class="requirements-toolbar-spacer"></div>
       <a href="{% url 'requirement-project-baseline-new' project.pk %}" class="btn btn-primary">
-        <i class="fa fa-camera"></i> {% trans "New baseline" %}
+        <i class="fa fa-camera"></i> {% trans "Freeze new baseline" %}
       </a>
     </div>
   </div>
 
   {% if not baselines %}
   <div class="requirements-blank-slate">
-    <p>{% trans "No baselines yet for this project." %}</p>
-    <p>
-      <a href="{% url 'requirement-project-baseline-new' project.pk %}" class="btn btn-primary">
-        <i class="fa fa-camera"></i> {% trans "Freeze the current requirement set" %}
-      </a>
-    </p>
+    <i class="pficon pficon-history"></i>
+    <h3>{% trans "No baselines yet" %}</h3>
+    <p>{% blocktrans %}A baseline is an immutable snapshot of every requirement and link in this project. Freeze one before a release or audit so the spec can be reproduced exactly later.{% endblocktrans %}</p>
+    <a href="{% url 'requirement-project-baseline-new' project.pk %}" class="btn btn-primary">
+      <i class="fa fa-camera"></i> {% trans "Freeze the first baseline" %}
+    </a>
   </div>
   {% else %}
-  <table class="table table-striped">
-    <thead>
-      <tr>
-        <th>{% trans "Name" %}</th>
-        <th>{% trans "Version" %}</th>
-        <th>{% trans "Created" %}</th>
-        <th>{% trans "By" %}</th>
-        <th>{% trans "Notes" %}</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for baseline in baselines %}
-      <tr>
-        <td><a href="{% url 'requirement-project-baseline-get' project.pk baseline.pk %}">{{ baseline.name }}</a></td>
-        <td>{% if baseline.version %}{{ baseline.version }}{% else %}—{% endif %}</td>
-        <td>{{ baseline.created_at|date:"Y-m-d H:i" }}</td>
-        <td>
-          {% if baseline.created_by %}
-            {{ baseline.created_by.get_full_name|default:baseline.created_by.username }}
-          {% else %}—{% endif %}
-        </td>
-        <td>{{ baseline.notes|truncatechars:80 }}</td>
-        <td class="text-right">
-          <a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'docx' %}" class="btn btn-xs btn-default">DOCX</a>
-          <a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'pdf' %}" class="btn btn-xs btn-default">PDF</a>
-          <a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'csv' %}" class="btn btn-xs btn-default">CSV</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="requirements-baseline-grid">
+    {% for baseline in baselines %}
+    <article class="requirements-baseline-card">
+      <header class="requirements-baseline-card-header">
+        <h3>
+          <a href="{% url 'requirement-project-baseline-get' project.pk baseline.pk %}">
+            <i class="fa fa-camera"></i> {{ baseline.name }}
+          </a>
+        </h3>
+        {% if baseline.version %}
+        <span class="label label-info requirements-pill">{{ baseline.version }}</span>
+        {% endif %}
+      </header>
+      <div class="requirements-baseline-card-meta">
+        <div>
+          <span class="requirements-baseline-meta-label">{% trans "Frozen" %}</span>
+          <strong>{{ baseline.created_at|date:"Y-m-d" }}</strong>
+          <small class="text-muted">{{ baseline.created_at|date:"H:i" }}</small>
+        </div>
+        <div>
+          <span class="requirements-baseline-meta-label">{% trans "By" %}</span>
+          <strong>{% if baseline.created_by %}{{ baseline.created_by.get_full_name|default:baseline.created_by.username }}{% else %}—{% endif %}</strong>
+        </div>
+      </div>
+      {% if baseline.notes %}
+      <p class="requirements-baseline-card-notes">{{ baseline.notes|truncatechars:140 }}</p>
+      {% endif %}
+      <footer class="requirements-baseline-card-actions">
+        <a href="{% url 'requirement-project-baseline-get' project.pk baseline.pk %}" class="btn btn-default btn-sm">
+          <i class="fa fa-folder-open"></i> {% trans "Open" %}
+        </a>
+        <div class="btn-group btn-group-sm">
+          <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <i class="fa fa-download"></i> {% trans "Export" %} <span class="caret"></span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-right">
+            <li><a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'docx' %}">
+              <i class="fa fa-file-word-o"></i> DOCX
+            </a></li>
+            <li><a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'pdf' %}">
+              <i class="fa fa-file-pdf-o"></i> PDF
+            </a></li>
+            <li><a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'csv' %}">
+              <i class="fa fa-file-text-o"></i> CSV
+            </a></li>
+          </ul>
+        </div>
+      </footer>
+    </article>
+    {% endfor %}
+  </div>
   {% endif %}
 </div>
+
+<link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">
 {% endblock %}

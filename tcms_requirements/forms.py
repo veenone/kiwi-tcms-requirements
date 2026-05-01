@@ -189,7 +189,13 @@ class ProjectBaselineForm(forms.ModelForm):
         model = ProjectBaseline
         fields = ["name", "version", "notes"]
         widgets = {
+            "name": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "v1.0, sprint-23, audit-2026Q2…",
+                "autofocus": "autofocus",
+            }),
             "notes": forms.Textarea(attrs={
+                "class": "form-control",
                 "rows": 3,
                 "placeholder": "Why this baseline was created (release tag, audit context, etc.)",
             }),
@@ -198,6 +204,10 @@ class ProjectBaselineForm(forms.ModelForm):
     def __init__(self, *args, project=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._project = project
+        # Bootstrap styling on the version select (TextInput/Textarea
+        # already get the class via Meta.widgets, but ModelChoiceField
+        # ignores Meta widget overrides for FK fields).
+        self.fields["version"].widget.attrs.setdefault("class", "form-control")
         # Lazy-import Kiwi Version to keep this module importable in unit tests.
         try:
             from tcms.management.models import Version  # noqa: WPS433

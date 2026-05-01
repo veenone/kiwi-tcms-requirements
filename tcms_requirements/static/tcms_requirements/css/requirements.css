@@ -523,6 +523,142 @@
     flex: 1 1 auto;
 }
 
+/* Baseline list — card grid replacing the dense table. Each baseline
+   gets one card with header, meta row, notes preview, and actions. */
+.requirements-baseline-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px;
+    margin-top: 4px;
+}
+
+.requirements-baseline-card {
+    background: #fff;
+    border: 1px solid #ededed;
+    border-radius: 6px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.requirements-baseline-card:hover {
+    border-color: #39a5dc;
+    box-shadow: 0 2px 6px rgba(57, 165, 220, 0.12);
+}
+
+.requirements-baseline-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.requirements-baseline-card-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.requirements-baseline-card-header h3 a {
+    color: #292e34;
+    text-decoration: none;
+}
+
+.requirements-baseline-card-header h3 a:hover {
+    color: #39a5dc;
+}
+
+.requirements-baseline-card-header .fa-camera {
+    color: #39a5dc;
+    margin-right: 4px;
+}
+
+.requirements-baseline-card-meta {
+    display: flex;
+    gap: 18px;
+    font-size: 12px;
+    color: #292e34;
+    flex-wrap: wrap;
+}
+
+.requirements-baseline-meta-label {
+    display: block;
+    font-size: 11px;
+    color: #72767b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.requirements-baseline-card-notes {
+    margin: 0;
+    color: #555;
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 8px 10px;
+    background: #fafafa;
+    border-left: 3px solid #ededed;
+    border-radius: 0 4px 4px 0;
+}
+
+.requirements-baseline-card-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 4px;
+    border-top: 1px dashed #ededed;
+}
+
+/* Baseline form — fieldset spacing and visible help text. */
+.requirements-baseline-form .form-control {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.requirements-baseline-form .help-block {
+    color: #72767b;
+    font-size: 12px;
+    margin-top: 4px;
+    margin-bottom: 0;
+}
+
+.requirements-baseline-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.requirements-baseline-bulletlist {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.requirements-baseline-bulletlist li {
+    position: relative;
+    padding-left: 26px;
+    margin-bottom: 12px;
+    line-height: 1.45;
+    font-size: 13px;
+}
+
+.requirements-baseline-bulletlist li:last-child {
+    margin-bottom: 0;
+}
+
+.requirements-baseline-bulletlist li > .fa {
+    position: absolute;
+    left: 0;
+    top: 4px;
+    color: #39a5dc;
+    width: 18px;
+    text-align: center;
+}
+
 /* TestCase detail page injection — the "Requirements" card added by
    inject.js. Stays out of the way until the JS decides to render it. */
 .tcmsreq-injected-card {
