@@ -170,13 +170,20 @@
     window.tcmsRequirements = window.tcmsRequirements || {};
     window.tcmsRequirements.wireSankeyExport = wireSankeyExport;
 
-    // Auto-bootstrap for the legacy traceability-page IDs, which set
-    // window.REQ_TRACE_EXPORT_URLS via inline <script> in the template.
+    // Auto-bootstrap for the traceability-page IDs. URLs come from data
+    // attributes on #requirements-traceability (CSP-safe — no inline JS).
+    // Falls back to window.REQ_TRACE_EXPORT_URLS for legacy templates that
+    // still use the old inline-script pattern.
     function bootstrap() {
+        var root = document.getElementById("requirements-traceability");
         var urls = window.REQ_TRACE_EXPORT_URLS || {};
+        if (root) {
+            urls = {
+                docx: root.getAttribute("data-export-docx-url") || urls.docx,
+                pdf: root.getAttribute("data-export-pdf-url") || urls.pdf,
+            };
+        }
         wireSankeyExport({
-            formId: "requirements-traceability-export-form",
-            svgFieldId: "requirements-export-svg",
             docxBtnId: "requirements-export-docx",
             pdfBtnId: "requirements-export-pdf",
             svgId: "requirements-sankey",
