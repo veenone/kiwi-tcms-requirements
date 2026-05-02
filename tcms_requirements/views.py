@@ -56,6 +56,7 @@ from tcms_requirements.forms import (
 )
 from tcms_requirements.imports.csv_import import import_bytes
 from tcms_requirements.models import (
+    Feature,
     Project,
     ProjectBaseline,
     Requirement,
@@ -518,10 +519,11 @@ class RequirementTraceabilityExportView(LoginRequiredMixin, PermissionRequiredMi
             case_bugs = _case_to_bugs(all_case_ids)
             rows = flatten_traceability(requirements, case_plans, case_bugs=case_bugs)
 
+            title = self._build_traceability_title(filters)
             stamp = datetime.now().strftime("%Y%m%d")
             if fmt == "docx":
                 png = svg_to_png_bytes(svg_blob) if svg_blob else None
-                payload = build_traceability_docx(rows, diagram_png=png)
+                payload = build_traceability_docx(rows, title=title, diagram_png=png)
                 return RequirementExportView._binary_download(
                     payload,
                     f"requirements-traceability-{stamp}.docx",
@@ -529,7 +531,7 @@ class RequirementTraceabilityExportView(LoginRequiredMixin, PermissionRequiredMi
                 )
             # fmt == "pdf"
             rlg = svg_to_rlg(svg_blob) if svg_blob else None
-            payload = build_traceability_pdf(rows, diagram_rlg=rlg)
+            payload = build_traceability_pdf(rows, title=title, diagram_rlg=rlg)
             return RequirementExportView._binary_download(
                 payload,
                 f"requirements-traceability-{stamp}.pdf",
@@ -549,6 +551,35 @@ class RequirementTraceabilityExportView(LoginRequiredMixin, PermissionRequiredMi
                 status=500,
                 content_type="text/plain; charset=utf-8",
             )
+
+    @staticmethod
+    def _build_traceability_title(filters):
+        """Add product / project / feature names to the export title so a
+        filtered export reads as 'Requirements traceability — Product A ·
+        Platform 2026 · Voice Control' rather than the bare report name.
+        """
+        bits = []
+        product_id = filters.get("product")
+        project_id = filters.get("project")
+        feature_id = filters.get("feature")
+        if product_id:
+            from tcms.management.models import Product  # noqa: WPS433
+            product = Product.objects.filter(pk=product_id).first()
+            if product:
+                bits.append(product.name)
+        if project_id:
+            project = Project.objects.filter(pk=project_id).first()
+            if project:
+                code = f" ({project.code})" if project.code else ""
+                bits.append(f"{project.name}{code}")
+        if feature_id:
+            feature = Feature.objects.filter(pk=feature_id).first()
+            if feature:
+                bits.append(feature.name)
+        suffix = " · ".join(bits)
+        if suffix:
+            return f"Requirements traceability — {suffix}"
+        return "Requirements traceability report"
 
 
 class _BaseTraceabilityView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):

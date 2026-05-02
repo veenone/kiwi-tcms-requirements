@@ -107,8 +107,11 @@
         function setBusy(btn, busy) {
             if (!btn) { return; }
             if (busy) {
-                if (!btn.dataset.origText) {
-                    btn.dataset.origText = btn.textContent;
+                // Preserve every child (icon + text nodes) so we can put
+                // them back exactly when the request finishes — replacing
+                // with textContent alone loses the leading <i class="fa">.
+                if (!btn._origChildren) {
+                    btn._origChildren = Array.from(btn.childNodes).map(function (n) { return n.cloneNode(true); });
                 }
                 while (btn.firstChild) { btn.removeChild(btn.firstChild); }
                 var icon = document.createElement("i");
@@ -117,12 +120,12 @@
                 btn.appendChild(document.createTextNode(" Exporting…"));
                 btn.style.pointerEvents = "none";
                 btn.style.opacity = "0.6";
-            } else if (btn.dataset.origText) {
+            } else if (btn._origChildren) {
                 while (btn.firstChild) { btn.removeChild(btn.firstChild); }
-                btn.appendChild(document.createTextNode(btn.dataset.origText));
+                btn._origChildren.forEach(function (n) { btn.appendChild(n); });
                 btn.style.pointerEvents = "";
                 btn.style.opacity = "";
-                delete btn.dataset.origText;
+                delete btn._origChildren;
             }
         }
 
