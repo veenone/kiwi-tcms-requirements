@@ -57,6 +57,27 @@ def _spacer(height=8):
     return Spacer(1, height)
 
 
+def _scaled_drawing(drawing, max_width_pts):
+    """Scale a reportlab Drawing to fit max_width_pts, preserving aspect.
+
+    Used for the SVG → RLG Sankey embedding so the diagram never overflows
+    the platypus frame (which would raise LayoutError "Flowable too large").
+    The caller passes ``doc.width`` (the actual frame width after margins),
+    not the raw page width.
+    """
+    if drawing.width <= 0:
+        return drawing
+    scale = max_width_pts / drawing.width
+    if scale >= 1.0:
+        # Drawing already fits; don't upscale (avoids tiny diagrams blowing
+        # up to fill the page and looking pixelated).
+        return drawing
+    drawing.width = drawing.width * scale
+    drawing.height = drawing.height * scale
+    drawing.scale(scale, scale)
+    return drawing
+
+
 def build_requirement_list_pdf(queryset, *, title="Requirements report") -> bytes:
     from reportlab.lib.pagesizes import A4  # noqa: WPS433
     from reportlab.platypus import SimpleDocTemplate
@@ -161,16 +182,12 @@ def build_traceability_pdf(rows, *, title="Requirements traceability report", di
     ]
 
     if diagram_rlg is not None:
-        # Scale the drawing to fit the usable width of a landscape A4 page.
-        from reportlab.lib.units import cm  # noqa: WPS433
-
-        usable_width_pts = landscape(A4)[0] - (2 * cm)
-        scale = usable_width_pts / max(diagram_rlg.width, 1)
-        diagram_rlg.width = diagram_rlg.width * scale
-        diagram_rlg.height = diagram_rlg.height * scale
-        diagram_rlg.scale(scale, scale)
+        # Scale the drawing to fit the actual platypus frame, not the raw
+        # page width. SimpleDocTemplate's default 1-inch margins shrink
+        # the usable area to ~686pt for landscape A4 — using a wrong
+        # margin estimate caused LayoutError "Flowable too large in frame".
         story.append(_heading("Traceability diagram", level=2))
-        story.append(diagram_rlg)
+        story.append(_scaled_drawing(diagram_rlg, doc.width))
         story.append(_para(
             "Blue = requirements, orange = test cases, green = test plans, "
             "red strokes = suspect links."
@@ -246,15 +263,8 @@ def build_project_pdf(project, requirements, snapshot, *, diagram_rlg=None) -> b
     story.append(_spacer())
 
     if diagram_rlg is not None:
-        from reportlab.lib.units import cm  # noqa: WPS433
-
-        usable_width_pts = A4[0] - (2 * cm)
-        scale = usable_width_pts / max(diagram_rlg.width, 1)
-        diagram_rlg.width = diagram_rlg.width * scale
-        diagram_rlg.height = diagram_rlg.height * scale
-        diagram_rlg.scale(scale, scale)
         story.append(_heading("Traceability diagram", level=2))
-        story.append(diagram_rlg)
+        story.append(_scaled_drawing(diagram_rlg, doc.width))
         story.append(_para(
             "Project-scoped Sankey rendered from the browser at the time "
             "of export. Blue = requirements, orange = test cases, "
