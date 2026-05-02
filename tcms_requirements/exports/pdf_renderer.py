@@ -130,13 +130,14 @@ def _scaled_drawing(drawing, max_width_pts):
     return drawing
 
 
-def _add_mixed_orientation_templates(doc):
+def _add_mixed_orientation_templates(doc, *, first="portrait"):
     """Register two named PageTemplates on a BaseDocTemplate so a single
     PDF can mix portrait + landscape pages.
 
-    Names: ``"portrait"`` (default A4) and ``"landscape"`` (rotated A4).
-    Switch between them in the story with ``NextPageTemplate(name)``
-    + ``PageBreak()``.
+    Names: ``"portrait"`` (A4) and ``"landscape"`` (rotated A4). Whichever
+    one is named in ``first`` becomes page 1 — reportlab uses the first
+    template added as the document's starting template. Switch templates
+    later in the story with ``NextPageTemplate(name)`` + ``PageBreak()``.
     """
     from reportlab.lib.pagesizes import A4, landscape  # noqa: WPS433
     from reportlab.platypus import Frame, PageTemplate  # noqa: WPS433
@@ -146,20 +147,28 @@ def _add_mixed_orientation_templates(doc):
     portrait_w, portrait_h = A4
     landscape_w, landscape_h = landscape(A4)
 
-    portrait_frame = Frame(
-        margin, margin,
-        portrait_w - 2 * margin, portrait_h - 2 * margin,
-        id="portrait_frame",
+    portrait_template = PageTemplate(
+        id="portrait",
+        frames=[Frame(
+            margin, margin,
+            portrait_w - 2 * margin, portrait_h - 2 * margin,
+            id="portrait_frame",
+        )],
+        pagesize=A4,
     )
-    landscape_frame = Frame(
-        margin, margin,
-        landscape_w - 2 * margin, landscape_h - 2 * margin,
-        id="landscape_frame",
+    landscape_template = PageTemplate(
+        id="landscape",
+        frames=[Frame(
+            margin, margin,
+            landscape_w - 2 * margin, landscape_h - 2 * margin,
+            id="landscape_frame",
+        )],
+        pagesize=landscape(A4),
     )
-    doc.addPageTemplates([
-        PageTemplate(id="portrait", frames=[portrait_frame], pagesize=A4),
-        PageTemplate(id="landscape", frames=[landscape_frame], pagesize=landscape(A4)),
-    ])
+    if first == "landscape":
+        doc.addPageTemplates([landscape_template, portrait_template])
+    else:
+        doc.addPageTemplates([portrait_template, landscape_template])
 
 
 def build_requirement_list_pdf(queryset, *, title="Requirements report") -> bytes:
@@ -261,19 +270,18 @@ def build_traceability_pdf(rows, *, title="Requirements traceability report", di
 
     buf = io.BytesIO()
     doc = BaseDocTemplate(buf, pagesize=A4, title=title)
-    _add_mixed_orientation_templates(doc)
+    # When we have a Sankey, page 1 must be landscape — register that
+    # template first so the document opens on it.
+    _add_mixed_orientation_templates(
+        doc, first="landscape" if diagram_rlg is not None else "portrait",
+    )
     story = []
 
     if diagram_rlg is not None:
-        # Sankey on a dedicated landscape A4 first page so the wide
-        # diagram has room. Then NextPageTemplate switches back to
-        # portrait for the report body.
-        story.append(NextPageTemplate("landscape"))
         story.append(_heading("Traceability diagram", level=1))
+        story.append(_para(f"<b>{title}</b>"))
         story.append(_para(f"Generated: {_now_iso()} · kiwitcms-requirements v{__version__}"))
         story.append(_spacer(12))
-        # doc.pageTemplates[0] is portrait; landscape is index 1 with
-        # its own width/height. Scale to the landscape frame width.
         landscape_width = landscape(A4)[0] - (2 * 72)  # 1 inch margins
         story.append(_scaled_drawing(diagram_rlg, landscape_width))
         story.append(_para(
@@ -333,13 +341,12 @@ def build_project_pdf(project, requirements, snapshot, *, diagram_rlg=None) -> b
     title = _project_doc_title(project)
     buf = io.BytesIO()
     doc = BaseDocTemplate(buf, pagesize=A4, title=title)
-    _add_mixed_orientation_templates(doc)
+    _add_mixed_orientation_templates(
+        doc, first="landscape" if diagram_rlg is not None else "portrait",
+    )
     story = []
 
     if diagram_rlg is not None:
-        # Sankey on its own landscape A4 page, then flip to portrait
-        # for the rest of the report.
-        story.append(NextPageTemplate("landscape"))
         story.append(_heading("Traceability diagram", level=1))
         story.append(_para(f"<b>{title}</b>"))
         story.append(_para(f"Generated: {_now_iso()} · kiwitcms-requirements v{__version__}"))

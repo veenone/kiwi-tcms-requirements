@@ -219,6 +219,7 @@ def build_traceability_docx(rows, *, title="Requirements traceability report", d
     from docx.shared import Inches
 
     doc = Document()
+    doc.core_properties.title = title
 
     if diagram_png:
         _start_landscape_first_section(doc)
@@ -289,6 +290,7 @@ def build_project_docx(project, requirements, snapshot, *, diagram_png=None) -> 
 
     doc = Document()
     title = _project_doc_title(project)
+    doc.core_properties.title = title
 
     if diagram_png:
         _start_landscape_first_section(doc)

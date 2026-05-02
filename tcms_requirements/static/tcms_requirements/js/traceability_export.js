@@ -135,6 +135,14 @@
             var fd = new FormData();
             fd.append("csrfmiddlewaretoken", getCsrfToken());
             fd.append("svg", captureSvg());
+            // Forward the current page's filter querystring (?product=&project=
+            // &feature=) so the export inherits the active filters and the
+            // generated title carries those names.
+            var pageQs = new URLSearchParams(window.location.search);
+            ["product", "project", "feature", "status"].forEach(function (key) {
+                var v = pageQs.get(key);
+                if (v) { fd.append(key, v); }
+            });
             return fetch(url, {
                 method: "POST",
                 body: fd,
