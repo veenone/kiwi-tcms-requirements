@@ -159,7 +159,13 @@
         <div id="project-sankey-legend" class="sankey-legend" aria-label="{% trans 'Sankey colour legend' %}"></div>
         <svg id="project-sankey"></svg>
       </div>
-      <script type="application/json" id="project-sankey-payload">{{ sankey_payload_json|safe }}</script>
+      {% comment %}
+        Payload sits on a hidden <input value=...> so it's CSP-safe —
+        strict script-src can block <script type="application/json"> data
+        blocks in some configurations. The renderer reads .value (auto-
+        unescaped JSON string) instead of .textContent.
+      {% endcomment %}
+      <input type="hidden" id="project-sankey-payload" value="{{ sankey_payload_json }}">
     </div>
   </div>
 
@@ -200,12 +206,12 @@
     {% endif %}
   </div>
 
-  <!-- Hidden form used by the Export-with-Sankey buttons. JS captures the
-       live SVG into the hidden field and POSTs to the project export URL. -->
-  <form id="project-export-form" method="post" style="display:none;">
-    {% csrf_token %}
-    <input type="hidden" name="svg" id="project-export-svg">
-  </form>
+  {% comment %}
+    JS-driven export uses fetch() with the page's CSRF token and posts
+    the live-captured SVG. Keep a bare CSRF input on the page so
+    wireSankeyExport can find it via querySelector.
+  {% endcomment %}
+  <form id="project-export-csrf" style="display:none;">{% csrf_token %}</form>
 </div>
 
 <link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">

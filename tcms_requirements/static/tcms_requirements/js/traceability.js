@@ -54,10 +54,20 @@
         var legendNode = opts.legendElementId
             ? document.getElementById(opts.legendElementId) : null;
 
+        // Source the JSON from .value (input/textarea) or .textContent
+        // (script/template). The input/value path is CSP-safe even when
+        // `script-src` blocks <script type="application/json"> blocks.
+        var raw = "";
+        if ("value" in dataNode && dataNode.value) {
+            raw = dataNode.value;
+        } else {
+            raw = dataNode.textContent || "";
+        }
         var payload;
         try {
-            payload = JSON.parse(dataNode.textContent || "{}");
+            payload = JSON.parse(raw || "{}");
         } catch (err) {
+            console.warn("[tcms-req] failed to parse Sankey payload:", err);
             payload = { nodes: [], links: [] };
         }
 

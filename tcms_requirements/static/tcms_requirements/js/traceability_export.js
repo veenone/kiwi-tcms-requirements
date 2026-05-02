@@ -32,9 +32,21 @@
         var svgEl = document.getElementById(opts.svgId);
         var urls = opts.urls || {};
 
-        if (!docxBtn && !pdfBtn) { return false; }
+        // No buttons + no URLs is the auto-bootstrap "this page has no
+        // export wiring" case — bail silently. Only error when the
+        // caller clearly intended to wire something (buttons found OR
+        // urls supplied) but the other half is missing.
+        if (!docxBtn && !pdfBtn && !urls.docx && !urls.pdf) {
+            return false;
+        }
+        if (!docxBtn && !pdfBtn) {
+            console.warn(TAG, "wireSankeyExport: URLs supplied but no buttons found —",
+                opts.docxBtnId, opts.pdfBtnId);
+            return false;
+        }
         if (!urls.docx && !urls.pdf) {
-            console.error(TAG, "wireSankeyExport missing urls.docx or urls.pdf");
+            console.warn(TAG, "wireSankeyExport: buttons found but URLs missing —",
+                "did you set data-export-docx-url / data-export-pdf-url on #requirements-project-detail?");
             return false;
         }
 
