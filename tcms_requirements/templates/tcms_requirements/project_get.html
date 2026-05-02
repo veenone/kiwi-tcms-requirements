@@ -214,10 +214,11 @@
   <form id="project-export-csrf" style="display:none;">{% csrf_token %}</form>
 </div>
 
-<link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">
+{% load requirements_extras %}
+<link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}?v={% plugin_version %}">
 <script src="{% static 'tcms_requirements/vendor/d3.v7.min.js' %}"></script>
 <script src="{% static 'tcms_requirements/vendor/d3-sankey.min.js' %}"></script>
-<script src="{% static 'tcms_requirements/js/traceability.js' %}"></script>
-<script src="{% static 'tcms_requirements/js/traceability_export.js' %}"></script>
-<script src="{% static 'tcms_requirements/js/project_detail.js' %}"></script>
+<script src="{% static 'tcms_requirements/js/traceability.js' %}?v={% plugin_version %}"></script>
+<script src="{% static 'tcms_requirements/js/traceability_export.js' %}?v={% plugin_version %}"></script>
+<script src="{% static 'tcms_requirements/js/project_detail.js' %}?v={% plugin_version %}"></script>
 {% endblock %}
