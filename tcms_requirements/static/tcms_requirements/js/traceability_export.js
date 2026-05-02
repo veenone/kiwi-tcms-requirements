@@ -1,104 +1,206 @@
-/* Captures the live-rendered Sankey SVG and POSTs it to the server
- * export endpoint when the user clicks DOCX / PDF.
+/* Captures a live-rendered Sankey SVG and POSTs it to a server export
+ * endpoint (DOCX or PDF) on user click. Uses fetch + blob + download
+ * anchor so the user gets an explicit save dialog and clear visual
+ * feedback (spinner on the clicked button) rather than relying on the
+ * browser's silent auto-download from a hidden-form POST.
  *
- * Submission flow:
- *   1. Serialise <svg id="requirements-sankey"> via XMLSerializer
- *   2. Stuff it into the hidden form's `svg` field
- *   3. Point the form's action at the right URL (docx or pdf)
- *   4. Submit — browser follows to a download response
+ * Public API:
+ *   window.tcmsRequirements.wireSankeyExport({
+ *     formId:      "requirements-traceability-export-form",  (optional, legacy)
+ *     svgFieldId:  "requirements-export-svg",                (optional, legacy)
+ *     docxBtnId:   "requirements-export-docx",
+ *     pdfBtnId:    "requirements-export-pdf",
+ *     svgId:       "requirements-sankey",
+ *     urls:        { docx: "...", pdf: "..." }
+ *   });
  *
- * On failure (no SVG rendered yet), we still submit with an empty svg —
- * the server falls back to the table-only report.
+ * Auto-bootstraps for the legacy traceability-page IDs at load time using
+ * window.REQ_TRACE_EXPORT_URLS so existing pages keep working.
  *
  * Diagnostics: every step logs to the browser console with the
- * `[tcms-req-export]` prefix so silent failures are easy to spot in
- * DevTools. If the click doesn't even produce a log line, the script
- * isn't being served — run `./manage.py collectstatic` or check the
- * Network tab for a 404 on this file.
+ * `[tcms-req-export]` prefix.
  */
 (function () {
     "use strict";
 
     var TAG = "[tcms-req-export]";
-    console.log(TAG, "script loaded");
 
-    var form = document.getElementById("requirements-traceability-export-form");
-    var svgField = document.getElementById("requirements-export-svg");
-    var docxBtn = document.getElementById("requirements-export-docx");
-    var pdfBtn = document.getElementById("requirements-export-pdf");
-    var svgEl = document.getElementById("requirements-sankey");
-    var urls = window.REQ_TRACE_EXPORT_URLS || {};
+    function wireSankeyExport(opts) {
+        opts = opts || {};
+        var docxBtn = opts.docxBtnId ? document.getElementById(opts.docxBtnId) : null;
+        var pdfBtn = opts.pdfBtnId ? document.getElementById(opts.pdfBtnId) : null;
+        var svgEl = document.getElementById(opts.svgId);
+        var urls = opts.urls || {};
 
-    var missing = [];
-    if (!form) { missing.push("form#requirements-traceability-export-form"); }
-    if (!svgField) { missing.push("input#requirements-export-svg"); }
-    if (!docxBtn) { missing.push("button#requirements-export-docx"); }
-    if (!pdfBtn) { missing.push("button#requirements-export-pdf"); }
-    if (!urls.docx || !urls.pdf) { missing.push("window.REQ_TRACE_EXPORT_URLS"); }
-
-    if (missing.length) {
-        console.error(TAG, "missing required elements:", missing);
-        if (docxBtn) {
-            docxBtn.title = "Export wiring incomplete — see browser console.";
+        // No buttons + no URLs is the auto-bootstrap "this page has no
+        // export wiring" case — bail silently. Only error when the
+        // caller clearly intended to wire something (buttons found OR
+        // urls supplied) but the other half is missing.
+        if (!docxBtn && !pdfBtn && !urls.docx && !urls.pdf) {
+            return false;
         }
-        if (pdfBtn) {
-            pdfBtn.title = "Export wiring incomplete — see browser console.";
+        if (!docxBtn && !pdfBtn) {
+            console.warn(TAG, "wireSankeyExport: URLs supplied but no buttons found —",
+                opts.docxBtnId, opts.pdfBtnId);
+            return false;
         }
-        return;
-    }
-    console.log(TAG, "wired", { docx: urls.docx, pdf: urls.pdf, hasSvg: !!svgEl });
+        if (!urls.docx && !urls.pdf) {
+            console.warn(TAG, "wireSankeyExport: buttons found but URLs missing —",
+                "did you set data-export-docx-url / data-export-pdf-url on #requirements-project-detail?");
+            return false;
+        }
 
-    function captureSvg() {
-        if (!svgEl) {
-            console.warn(TAG, "no live SVG — submitting empty (server falls back to table-only).");
-            return "";
-        }
-        try {
-            var clone = svgEl.cloneNode(true);
-            clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-            clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
-            // Make sure width/height are set so svglib has dimensions.
-            if (!clone.getAttribute("width")) {
-                clone.setAttribute("width", svgEl.clientWidth || 1200);
+        console.log(TAG, "wired", {
+            docx: urls.docx, pdf: urls.pdf, hasSvg: !!svgEl,
+        });
+
+        function captureSvg() {
+            if (!svgEl) {
+                console.warn(TAG, "no live SVG — POSTing empty (server falls back to table-only).");
+                return "";
             }
-            if (!clone.getAttribute("height")) {
-                clone.setAttribute("height", svgEl.clientHeight || 600);
+            try {
+                var clone = svgEl.cloneNode(true);
+                clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+                clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+                if (!clone.getAttribute("width")) {
+                    clone.setAttribute("width", svgEl.clientWidth || 1200);
+                }
+                if (!clone.getAttribute("height")) {
+                    clone.setAttribute("height", svgEl.clientHeight || 600);
+                }
+                var serializer = new XMLSerializer();
+                var serialized = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+                                 serializer.serializeToString(clone);
+                console.log(TAG, "captured SVG: " + serialized.length + " bytes");
+                return serialized;
+            } catch (err) {
+                console.error(TAG, "SVG capture failed:", err);
+                return "";
             }
-            var serializer = new XMLSerializer();
-            var serialized = '<?xml version="1.0" encoding="UTF-8"?>\n' +
-                             serializer.serializeToString(clone);
-            console.log(TAG, "captured SVG: " + serialized.length + " bytes");
-            return serialized;
-        } catch (err) {
-            console.error(TAG, "SVG capture failed:", err);
-            return "";
         }
+
+        function getCsrfToken() {
+            var anyField = document.querySelector("input[name=csrfmiddlewaretoken]");
+            return (anyField || {}).value || "";
+        }
+
+        function downloadFromResponse(response, fallbackName) {
+            var disposition = response.headers.get("Content-Disposition") || "";
+            var match = disposition.match(/filename="?([^";]+)"?/i);
+            var name = match ? match[1] : fallbackName;
+            return response.blob().then(function (blob) {
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement("a");
+                a.href = url;
+                a.download = name;
+                a.style.display = "none";
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function () {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+            });
+        }
+
+        function setBusy(btn, busy) {
+            if (!btn) { return; }
+            if (busy) {
+                // Preserve every child (icon + text nodes) so we can put
+                // them back exactly when the request finishes — replacing
+                // with textContent alone loses the leading <i class="fa">.
+                if (!btn._origChildren) {
+                    btn._origChildren = Array.from(btn.childNodes).map(function (n) { return n.cloneNode(true); });
+                }
+                while (btn.firstChild) { btn.removeChild(btn.firstChild); }
+                var icon = document.createElement("i");
+                icon.className = "fa fa-spinner fa-spin";
+                btn.appendChild(icon);
+                btn.appendChild(document.createTextNode(" Exporting…"));
+                btn.style.pointerEvents = "none";
+                btn.style.opacity = "0.6";
+            } else if (btn._origChildren) {
+                while (btn.firstChild) { btn.removeChild(btn.firstChild); }
+                btn._origChildren.forEach(function (n) { btn.appendChild(n); });
+                btn.style.pointerEvents = "";
+                btn.style.opacity = "";
+                delete btn._origChildren;
+            }
+        }
+
+        function submitFetch(url, label, btn, fallbackName) {
+            console.log(TAG, "POST →", label, url);
+            setBusy(btn, true);
+            var fd = new FormData();
+            fd.append("csrfmiddlewaretoken", getCsrfToken());
+            fd.append("svg", captureSvg());
+            // Forward the current page's filter querystring (?product=&project=
+            // &feature=) so the export inherits the active filters and the
+            // generated title carries those names.
+            var pageQs = new URLSearchParams(window.location.search);
+            ["product", "project", "feature", "status"].forEach(function (key) {
+                var v = pageQs.get(key);
+                if (v) { fd.append(key, v); }
+            });
+            return fetch(url, {
+                method: "POST",
+                body: fd,
+                credentials: "same-origin",
+            }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error(label + " export failed: HTTP " + response.status);
+                }
+                return downloadFromResponse(response, fallbackName);
+            }).then(function () {
+                console.log(TAG, label, "download complete");
+            }).catch(function (err) {
+                console.error(TAG, "submitFetch error:", err);
+                alert("Export failed: " + err.message + "\nSee browser console for details.");
+            }).then(function () {
+                setBusy(btn, false);
+            });
+        }
+
+        if (docxBtn && urls.docx) {
+            docxBtn.addEventListener("click", function (ev) {
+                ev.preventDefault();
+                submitFetch(urls.docx, "DOCX", docxBtn, "export.docx");
+            });
+        }
+        if (pdfBtn && urls.pdf) {
+            pdfBtn.addEventListener("click", function (ev) {
+                ev.preventDefault();
+                submitFetch(urls.pdf, "PDF", pdfBtn, "export.pdf");
+            });
+        }
+        return true;
     }
 
-    function submit(url, label) {
-        if (!url) {
-            console.error(TAG, "no URL configured for", label);
-            return;
-        }
-        console.log(TAG, "submitting", label, "to", url);
-        svgField.value = captureSvg();
-        form.action = url;
-        try {
-            form.submit();
-        } catch (err) {
-            console.error(TAG, "form.submit() raised:", err);
-            alert(
-                "Export request couldn't be sent. Open the browser console for details."
-            );
-        }
-    }
+    // Public API.
+    window.tcmsRequirements = window.tcmsRequirements || {};
+    window.tcmsRequirements.wireSankeyExport = wireSankeyExport;
 
-    docxBtn.addEventListener("click", function (ev) {
-        ev.preventDefault();
-        submit(urls.docx, "DOCX");
-    });
-    pdfBtn.addEventListener("click", function (ev) {
-        ev.preventDefault();
-        submit(urls.pdf, "PDF");
-    });
+    // Auto-bootstrap for the traceability-page IDs. URLs come from data
+    // attributes on #requirements-traceability (CSP-safe — no inline JS).
+    // Falls back to window.REQ_TRACE_EXPORT_URLS for legacy templates that
+    // still use the old inline-script pattern.
+    function bootstrap() {
+        var root = document.getElementById("requirements-traceability");
+        var urls = window.REQ_TRACE_EXPORT_URLS || {};
+        if (root) {
+            urls = {
+                docx: root.getAttribute("data-export-docx-url") || urls.docx,
+                pdf: root.getAttribute("data-export-pdf-url") || urls.pdf,
+            };
+        }
+        wireSankeyExport({
+            docxBtnId: "requirements-export-docx",
+            pdfBtnId: "requirements-export-pdf",
+            svgId: "requirements-sankey",
+            urls: urls,
+        });
+    }
+    if (document.readyState !== "loading") { bootstrap(); }
+    else { document.addEventListener("DOMContentLoaded", bootstrap); }
 })();

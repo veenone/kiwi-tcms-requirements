@@ -9,24 +9,32 @@
     <h1>
       {% trans "Baseline" %} <code>{{ baseline.name }}</code>
       <small>{{ project.name }}{% if project.code %} · <code>{{ project.code }}</code>{% endif %}</small>
-      <div class="btn-group pull-right">
-        <a href="{% url 'requirement-project-baseline-list' project.pk %}" class="btn btn-link">
-          <i class="fa fa-arrow-left"></i> {% trans "All baselines" %}
-        </a>
-        <a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'docx' %}" class="btn btn-default">
-          <i class="fa fa-file-word-o"></i> DOCX
-        </a>
-        <a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'pdf' %}" class="btn btn-default">
-          <i class="fa fa-file-pdf-o"></i> PDF
-        </a>
-        <a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'csv' %}" class="btn btn-default">
-          <i class="fa fa-file-text-o"></i> CSV
-        </a>
-      </div>
     </h1>
+    <div class="requirements-page-toolbar">
+      <a href="{% url 'requirement-project-baseline-list' project.pk %}" class="btn btn-link">
+        <i class="fa fa-arrow-left"></i> {% trans "All baselines" %}
+      </a>
+      <div class="requirements-toolbar-spacer"></div>
+      <div class="btn-group">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <i class="fa fa-download"></i> {% trans "Export" %} <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-right">
+          <li><a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'docx' %}">
+            <i class="fa fa-file-word-o"></i> DOCX
+          </a></li>
+          <li><a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'pdf' %}">
+            <i class="fa fa-file-pdf-o"></i> PDF
+          </a></li>
+          <li><a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'csv' %}">
+            <i class="fa fa-file-text-o"></i> CSV
+          </a></li>
+        </ul>
+      </div>
+    </div>
   </div>
 
-  <div class="row">
+  <div class="row requirements-row-equal">
     <div class="col-md-6">
       <div class="panel panel-default">
         <div class="panel-heading"><h3 class="panel-title">{% trans "Metadata" %}</h3></div>

@@ -56,6 +56,7 @@ from tcms_requirements.forms import (
 )
 from tcms_requirements.imports.csv_import import import_bytes
 from tcms_requirements.models import (
+    Feature,
     Project,
     ProjectBaseline,
     Requirement,
@@ -518,10 +519,11 @@ class RequirementTraceabilityExportView(LoginRequiredMixin, PermissionRequiredMi
             case_bugs = _case_to_bugs(all_case_ids)
             rows = flatten_traceability(requirements, case_plans, case_bugs=case_bugs)
 
+            title = self._build_traceability_title(filters)
             stamp = datetime.now().strftime("%Y%m%d")
             if fmt == "docx":
                 png = svg_to_png_bytes(svg_blob) if svg_blob else None
-                payload = build_traceability_docx(rows, diagram_png=png)
+                payload = build_traceability_docx(rows, title=title, diagram_png=png)
                 return RequirementExportView._binary_download(
                     payload,
                     f"requirements-traceability-{stamp}.docx",
@@ -529,7 +531,7 @@ class RequirementTraceabilityExportView(LoginRequiredMixin, PermissionRequiredMi
                 )
             # fmt == "pdf"
             rlg = svg_to_rlg(svg_blob) if svg_blob else None
-            payload = build_traceability_pdf(rows, diagram_rlg=rlg)
+            payload = build_traceability_pdf(rows, title=title, diagram_rlg=rlg)
             return RequirementExportView._binary_download(
                 payload,
                 f"requirements-traceability-{stamp}.pdf",
@@ -549,6 +551,35 @@ class RequirementTraceabilityExportView(LoginRequiredMixin, PermissionRequiredMi
                 status=500,
                 content_type="text/plain; charset=utf-8",
             )
+
+    @staticmethod
+    def _build_traceability_title(filters):
+        """Add product / project / feature names to the export title so a
+        filtered export reads as 'Requirements traceability — Product A ·
+        Platform 2026 · Voice Control' rather than the bare report name.
+        """
+        bits = []
+        product_id = filters.get("product")
+        project_id = filters.get("project")
+        feature_id = filters.get("feature")
+        if product_id:
+            from tcms.management.models import Product  # noqa: WPS433
+            product = Product.objects.filter(pk=product_id).first()
+            if product:
+                bits.append(product.name)
+        if project_id:
+            project = Project.objects.filter(pk=project_id).first()
+            if project:
+                code = f" ({project.code})" if project.code else ""
+                bits.append(f"{project.name}{code}")
+        if feature_id:
+            feature = Feature.objects.filter(pk=feature_id).first()
+            if feature:
+                bits.append(feature.name)
+        suffix = " · ".join(bits)
+        if suffix:
+            return f"Requirements traceability — {suffix}"
+        return "Requirements traceability report"
 
 
 class _BaseTraceabilityView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
@@ -664,29 +695,27 @@ class RequirementTraceabilityDocumentView(_BaseTraceabilityView):
 
 # ── projects (programme-record views) ────────────────────────────────
 class ProjectListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
-    """Card grid of programmes with status, owner, and coverage at a glance."""
+    """Kanban grid of programmes — one column per lifecycle status."""
     permission_required = "tcms_requirements.view_requirement"
     model = Project
     template_name = "tcms_requirements/project_list.html"
     context_object_name = "projects"
-    paginate_by = 24
+    paginate_by = None  # Kanban view shows everything; status filter narrows.
 
-    # Closed/cancelled programmes drop to the bottom; everything else
-    # sorts by status priority then product/name for a stable display.
-    _STATUS_ORDER = {
-        "active": 0,
-        "planning": 1,
-        "on_hold": 2,
-        "closed": 3,
-        "cancelled": 4,
-    }
+    # Programme lifecycle. Drives column order on the Kanban board and
+    # the within-status sort fallback on the legacy card grid.
+    _LIFECYCLE = ("planning", "active", "on_hold", "closed", "cancelled")
 
     def get_queryset(self):
-        return (
+        qs = (
             Project.objects
             .select_related("product", "owner")
             .prefetch_related("test_plans", "stakeholders")
         )
+        status = self.request.GET.get("status", "").strip()
+        if status and status in dict(Project.STATUS_CHOICES):
+            qs = qs.filter(status=status)
+        return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -701,11 +730,31 @@ class ProjectListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 "suspects": snapshot["suspect_link_count"],
             })
         cards.sort(key=lambda c: (
-            self._STATUS_ORDER.get(c["project"].status, 99),
             c["project"].product.name,
             c["project"].name,
         ))
+
+        active_status = self.request.GET.get("status", "").strip()
+        # When a status filter is active, only show that one column.
+        # Otherwise render every lifecycle column so empty lanes still
+        # signal "no work in this stage" instead of disappearing.
+        visible_lifecycle = (
+            (active_status,) if active_status in self._LIFECYCLE else self._LIFECYCLE
+        )
+
+        status_labels = dict(Project.STATUS_CHOICES)
+        columns = []
+        for status in visible_lifecycle:
+            columns.append({
+                "key": status,
+                "label": status_labels.get(status, status),
+                "cards": [c for c in cards if c["project"].status == status],
+            })
+
         ctx["cards"] = cards
+        ctx["columns"] = columns
+        ctx["active_status"] = active_status
+        ctx["status_choices"] = Project.STATUS_CHOICES
         return ctx
 
 
@@ -784,11 +833,23 @@ class ProjectDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView)
 
 
 class ProjectExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
-    """Download a project's requirements + metadata as DOCX or PDF."""
+    """Download a project's requirements + metadata as DOCX or PDF.
+
+    GET delivers a table-only export (works from any link). POST accepts a
+    ``svg`` field carrying the live-rendered project Sankey, which is
+    rasterised and embedded above the requirements table — same flow as
+    the traceability-page export.
+    """
     permission_required = "tcms_requirements.view_requirement"
     ALLOWED_FORMATS = {"docx", "pdf"}
 
     def get(self, request, pk, fmt):
+        return self._export(request, pk, fmt, svg_blob="")
+
+    def post(self, request, pk, fmt):
+        return self._export(request, pk, fmt, svg_blob=request.POST.get("svg", "") or "")
+
+    def _export(self, request, pk, fmt, svg_blob):
         if fmt not in self.ALLOWED_FORMATS:
             return HttpResponseBadRequest(
                 f"Format must be one of {sorted(self.ALLOWED_FORMATS)}."
@@ -800,6 +861,10 @@ class ProjectExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
         from tcms_requirements.exports.docx_renderer import build_project_docx  # noqa: WPS433
         from tcms_requirements.exports.pdf_renderer import build_project_pdf  # noqa: WPS433
+        from tcms_requirements.traceability.report import (  # noqa: WPS433
+            svg_to_png_bytes,
+            svg_to_rlg,
+        )
 
         snapshot = dashboard_snapshot(filters={"project": project.pk})
         requirements = (
@@ -813,13 +878,15 @@ class ProjectExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
         stamp = datetime.now().strftime("%Y%m%d")
         slug = project.code or f"project-{project.pk}"
         if fmt == "docx":
-            payload = build_project_docx(project, requirements, snapshot)
+            png = svg_to_png_bytes(svg_blob) if svg_blob else None
+            payload = build_project_docx(project, requirements, snapshot, diagram_png=png)
             return RequirementExportView._binary_download(
                 payload,
                 f"project-{slug}-{stamp}.docx",
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
-        payload = build_project_pdf(project, requirements, snapshot)
+        rlg = svg_to_rlg(svg_blob) if svg_blob else None
+        payload = build_project_pdf(project, requirements, snapshot, diagram_rlg=rlg)
         return RequirementExportView._binary_download(
             payload,
             f"project-{slug}-{stamp}.pdf",
@@ -1114,11 +1181,11 @@ class ProjectEvidencePackView(LoginRequiredMixin, PermissionRequiredMixin, View)
             )
 
             csv_buf = io.StringIO()
-            write_csv(csv_buf, requirements)
+            write_csv(requirements, csv_buf)
             zf.writestr("requirements.csv", csv_buf.getvalue().encode("utf-8"))
 
             jira_buf = io.StringIO()
-            write_jira_csv(jira_buf, requirements)
+            write_jira_csv(requirements, jira_buf)
             zf.writestr("requirements-jira.csv", jira_buf.getvalue().encode("utf-8"))
 
             zf.writestr(

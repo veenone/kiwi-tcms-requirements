@@ -7,13 +7,54 @@
     margin-bottom: 16px;
 }
 
+/* Filter rows — every input, label, and button sits on a shared baseline.
+   Replaces Bootstrap's default form-inline spacing, which leaves the
+   buttons ahead of the field bottoms on multi-row collapses. */
+.requirements-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
 .requirements-filters .form-group {
-    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+}
+
+.requirements-filters .form-group > label {
+    font-size: 12px;
+    color: #72767b;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.requirements-filters .form-control {
+    height: 32px;
+    line-height: 1.42857;
 }
 
 .requirements-filters input[type="text"],
 .requirements-filters select {
-    min-width: 140px;
+    min-width: 160px;
+}
+
+.requirements-filters .btn {
+    height: 32px;
+    line-height: 1;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+/* Group the trailing Apply/Reset buttons into a single inline cluster
+   so they always align to the field bottoms regardless of wrap. */
+.requirements-filters-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
 }
 
 /* Shared pill style for every plugin badge (status, priority, suspect,
@@ -98,6 +139,56 @@
 .requirements-toolbar-actions .btn-group {
     margin-left: 6px;
 }
+
+/* Unified page-toolbar — replaces the per-template "btn-group pull-right"
+   stacks. Renders as a flex row that wraps on narrow screens, separates
+   nav / primary / destructive / export clusters with breathing room, and
+   keeps the page title on the left. Add the `requirements-page-toolbar`
+   class to a wrapper element inside each .page-header h1 block. */
+.requirements-page-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin-top: 6px;
+}
+
+.requirements-page-toolbar .btn,
+.requirements-page-toolbar .btn-group > .btn {
+    font-size: 13px;
+    padding: 5px 12px;
+    line-height: 1.42857;
+}
+
+.requirements-page-toolbar .btn .fa {
+    margin-right: 4px;
+}
+
+/* Visual separators between toolbar clusters: navigation, primary action,
+   destructive, related views, exports. Each cluster gets its own
+   .btn-group; a margin-left:auto on .requirements-toolbar-spacer pushes
+   the export cluster to the right edge. */
+.requirements-toolbar-spacer {
+    flex: 1 1 0;
+}
+
+.requirements-page-toolbar .btn-link {
+    color: #292e34;
+}
+
+.requirements-page-toolbar .btn-link:hover {
+    color: #39a5dc;
+    text-decoration: none;
+}
+
+/* Compact primary CTAs on dense headers. */
+.requirements-page-toolbar .btn-primary {
+    font-weight: 500;
+}
+
+/* Drop the giant float-right pull-right pattern; the flex toolbar
+   handles alignment via order + margin-left:auto. */
+.requirements-page-toolbar .pull-right { float: none; }
 
 /* Form fieldsets — group fields by concern with subtle dividers. */
 .requirements-form .requirements-fieldset {
@@ -224,8 +315,11 @@
     line-height: 1.3;
 }
 
-/* Sankey traceability diagram container. */
-#requirements-sankey-wrap {
+/* Sankey diagram container — used by both the dedicated traceability
+   page (#requirements-sankey-wrap) and the project detail page
+   (#project-sankey-wrap). */
+#requirements-sankey-wrap,
+#project-sankey-wrap {
     background: #fff;
     border: 1px solid #ededed;
     border-radius: 3px;
@@ -233,12 +327,49 @@
     overflow-x: auto;
 }
 
-#requirements-sankey text {
+/* Legend showing the kind→colour mapping above the Sankey.
+   Items wrap on small screens; only kinds present in the current
+   payload are rendered (see traceability.js::renderLegend). */
+.sankey-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding: 8px 4px;
+    margin-bottom: 8px;
+    border-bottom: 1px dashed #ededed;
+    font-size: 12px;
+    color: #72767b;
+}
+
+.sankey-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1;
+}
+
+.sankey-legend-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.sankey-legend-swatch-line {
+    width: 18px;
+    height: 3px;
+    border-radius: 0;
+}
+
+#requirements-sankey text,
+#project-sankey text {
     fill: #292e34;
     pointer-events: none;
 }
 
-#requirements-sankey-status {
+#requirements-sankey-status,
+#project-sankey-status {
     margin-bottom: 8px;
     font-size: 12px;
 }
@@ -248,6 +379,289 @@
 #chart-by-level, #chart-by-category,
 #chart-safety {
     min-height: 260px;
+}
+
+/* Kanban-style project index: one column per status, ordered by the
+   programme lifecycle (planning → active → on_hold → closed → cancelled).
+   Each column is a vertical lane that scrolls horizontally on overflow. */
+.requirements-kanban-board {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    align-items: flex-start;
+}
+
+.requirements-kanban-column {
+    flex: 0 0 280px;
+    min-width: 280px;
+    max-width: 320px;
+    background: #f5f7fa;
+    border: 1px solid #ededed;
+    border-radius: 4px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+}
+
+.requirements-kanban-column-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 6px 8px;
+    border-bottom: 2px solid;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #292e34;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.requirements-kanban-column-count {
+    font-size: 11px;
+    background: rgba(0, 0, 0, 0.06);
+    color: #292e34;
+    padding: 2px 8px;
+    border-radius: 10em;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+}
+
+/* Each lane carries the lifecycle accent on its header divider so the
+   column is identifiable at a glance even with the cards collapsed. */
+.requirements-kanban-column[data-status="planning"]  .requirements-kanban-column-heading { border-color: #39a5dc; }
+.requirements-kanban-column[data-status="active"]    .requirements-kanban-column-heading { border-color: #3f9c35; }
+.requirements-kanban-column[data-status="on_hold"]   .requirements-kanban-column-heading { border-color: #ec7a08; }
+.requirements-kanban-column[data-status="closed"]    .requirements-kanban-column-heading { border-color: #72767b; }
+.requirements-kanban-column[data-status="cancelled"] .requirements-kanban-column-heading { border-color: #cc0000; }
+
+.requirements-kanban-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+}
+
+.requirements-kanban-cards .requirements-project-card {
+    margin-bottom: 0;
+}
+
+/* Bootstrap's dl-horizontal floats dt at 160px width — too wide for a
+   280px kanban card, which forces dd content to wrap mid-value. Inside
+   a kanban card, switch to a tight 2-column grid so each row fits. */
+.requirements-kanban-cards .requirements-project-meta {
+    display: grid;
+    grid-template-columns: minmax(60px, max-content) 1fr;
+    column-gap: 10px;
+    row-gap: 4px;
+    margin: 0;
+}
+
+.requirements-kanban-cards .requirements-project-meta dt,
+.requirements-kanban-cards .requirements-project-meta dd {
+    float: none;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    text-align: left;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.requirements-kanban-cards .requirements-project-meta dt {
+    color: #72767b;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Risk pills can stack on narrow cards — one per line is fine. */
+.requirements-kanban-cards .requirements-project-meta dd .label {
+    display: inline-block;
+    margin: 1px 0;
+}
+
+.requirements-kanban-empty {
+    padding: 20px 8px;
+    text-align: center;
+    color: #9c9c9c;
+    font-style: italic;
+    font-size: 12px;
+}
+
+/* Equal-height row: every direct .panel child stretches to the height
+   of the tallest panel in the row. Use on Bootstrap rows that hold
+   side-by-side .panel cards (dashboard, project detail). */
+.requirements-row-equal {
+    display: flex;
+    flex-wrap: wrap;
+    margin-left: -15px;
+    margin-right: -15px;
+}
+
+.requirements-row-equal > [class^="col-"],
+.requirements-row-equal > [class*=" col-"] {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 16px;
+}
+
+.requirements-row-equal > [class^="col-"] > .panel,
+.requirements-row-equal > [class*=" col-"] > .panel {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* When a column has multiple stacked panels, only the last one absorbs
+   the leftover height — earlier panels keep their natural size, which
+   reads better than splitting the slack equally. */
+.requirements-row-equal > [class^="col-"] > .panel:last-child,
+.requirements-row-equal > [class*=" col-"] > .panel:last-child {
+    flex: 1 1 auto;
+    margin-bottom: 0;
+}
+
+.requirements-row-equal > [class^="col-"] > .panel > .panel-body,
+.requirements-row-equal > [class*=" col-"] > .panel > .panel-body {
+    flex: 1 1 auto;
+}
+
+/* Baseline list — card grid replacing the dense table. Each baseline
+   gets one card with header, meta row, notes preview, and actions. */
+.requirements-baseline-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px;
+    margin-top: 4px;
+}
+
+.requirements-baseline-card {
+    background: #fff;
+    border: 1px solid #ededed;
+    border-radius: 6px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.requirements-baseline-card:hover {
+    border-color: #39a5dc;
+    box-shadow: 0 2px 6px rgba(57, 165, 220, 0.12);
+}
+
+.requirements-baseline-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.requirements-baseline-card-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.requirements-baseline-card-header h3 a {
+    color: #292e34;
+    text-decoration: none;
+}
+
+.requirements-baseline-card-header h3 a:hover {
+    color: #39a5dc;
+}
+
+.requirements-baseline-card-header .fa-camera {
+    color: #39a5dc;
+    margin-right: 4px;
+}
+
+.requirements-baseline-card-meta {
+    display: flex;
+    gap: 18px;
+    font-size: 12px;
+    color: #292e34;
+    flex-wrap: wrap;
+}
+
+.requirements-baseline-meta-label {
+    display: block;
+    font-size: 11px;
+    color: #72767b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.requirements-baseline-card-notes {
+    margin: 0;
+    color: #555;
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 8px 10px;
+    background: #fafafa;
+    border-left: 3px solid #ededed;
+    border-radius: 0 4px 4px 0;
+}
+
+.requirements-baseline-card-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 4px;
+    border-top: 1px dashed #ededed;
+}
+
+/* Baseline form — fieldset spacing and visible help text. */
+.requirements-baseline-form .form-control {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.requirements-baseline-form .help-block {
+    color: #72767b;
+    font-size: 12px;
+    margin-top: 4px;
+    margin-bottom: 0;
+}
+
+.requirements-baseline-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.requirements-baseline-bulletlist {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.requirements-baseline-bulletlist li {
+    position: relative;
+    padding-left: 26px;
+    margin-bottom: 12px;
+    line-height: 1.45;
+    font-size: 13px;
+}
+
+.requirements-baseline-bulletlist li:last-child {
+    margin-bottom: 0;
+}
+
+.requirements-baseline-bulletlist li > .fa {
+    position: absolute;
+    left: 0;
+    top: 4px;
+    color: #39a5dc;
+    width: 18px;
+    text-align: center;
 }
 
 /* TestCase detail page injection — the "Requirements" card added by

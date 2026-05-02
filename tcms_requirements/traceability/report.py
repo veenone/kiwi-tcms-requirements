@@ -88,6 +88,16 @@ def flatten_traceability(requirements, case_plans, case_bugs=None) -> list:
 # ── SVG conversion helpers ───────────────────────────────────────────
 
 
+def _svg_to_bytes_io(svg_text: str) -> io.BytesIO:
+    """Wrap the SVG payload as bytes for ``svg2rlg``.
+
+    svglib's lxml-backed parser refuses unicode input that has an
+    ``<?xml encoding="..."?>`` declaration — the browser-serialised
+    payload always carries one. Encode to UTF-8 bytes so lxml is happy.
+    """
+    return io.BytesIO(svg_text.encode("utf-8"))
+
+
 def svg_to_png_bytes(svg_text: str, width: int = 1400) -> bytes | None:
     """Rasterise the client-submitted SVG for DOCX embedding.
 
@@ -110,7 +120,7 @@ def svg_to_png_bytes(svg_text: str, width: int = 1400) -> bytes | None:
         svg_text[:80],
     )
     try:
-        drawing = svg2rlg(io.StringIO(svg_text))
+        drawing = svg2rlg(_svg_to_bytes_io(svg_text))
         if drawing is None:
             logger.warning("svg_to_png_bytes: svg2rlg returned None.")
             return None
@@ -149,7 +159,7 @@ def svg_to_rlg(svg_text: str):
         svg_text[:80],
     )
     try:
-        drawing = svg2rlg(io.StringIO(svg_text))
+        drawing = svg2rlg(_svg_to_bytes_io(svg_text))
         if drawing is None:
             logger.warning("svg_to_rlg: svg2rlg returned None.")
         return drawing

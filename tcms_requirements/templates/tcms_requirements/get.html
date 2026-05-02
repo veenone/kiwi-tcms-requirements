@@ -9,20 +9,26 @@
     <h1>
       <code>{{ requirement.identifier }}</code>
       <small>{{ requirement.title }}</small>
-      <a href="{% url 'requirement-edit' requirement.pk %}" class="btn btn-default pull-right">
-        <i class="fa fa-pencil"></i> {% trans "Edit" %}
+    </h1>
+    <div class="requirements-page-toolbar">
+      <a href="{% url 'requirement-list' %}" class="btn btn-link">
+        <i class="fa fa-arrow-left"></i> {% trans "All requirements" %}
       </a>
-      {% if perms.tcms_requirements.approve_requirement %}
-      <a href="{% url 'requirement-sign' requirement.pk %}"
-         class="btn btn-default pull-right" style="margin-right:6px;">
-        <i class="fa fa-pencil-square-o"></i> {% trans "Sign as approved" %}
-      </a>
-      {% endif %}
-      <a href="{% url 'requirement-link-cases' requirement.pk %}"
-         class="btn btn-primary pull-right" style="margin-right:6px;">
+      <div class="requirements-toolbar-spacer"></div>
+      <a href="{% url 'requirement-link-cases' requirement.pk %}" class="btn btn-primary">
         <i class="fa fa-link"></i> {% trans "Link test case" %}
       </a>
-    </h1>
+      <div class="btn-group">
+        <a href="{% url 'requirement-edit' requirement.pk %}" class="btn btn-default">
+          <i class="fa fa-pencil"></i> {% trans "Edit" %}
+        </a>
+        {% if perms.tcms_requirements.approve_requirement %}
+        <a href="{% url 'requirement-sign' requirement.pk %}" class="btn btn-default">
+          <i class="fa fa-pencil-square-o"></i> {% trans "Sign as approved" %}
+        </a>
+        {% endif %}
+      </div>
+    </div>
   </div>
 
   <div class="row">

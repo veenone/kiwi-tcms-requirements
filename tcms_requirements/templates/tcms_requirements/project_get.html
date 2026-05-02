@@ -4,7 +4,10 @@
 {% block title %}{{ project.name }}{% endblock %}
 
 {% block contents %}
-<div class="container-fluid" id="requirements-project-detail" data-project-id="{{ project.pk }}">
+<div class="container-fluid" id="requirements-project-detail"
+     data-project-id="{{ project.pk }}"
+     data-export-docx-url="{% url 'requirement-project-export' project.pk 'docx' %}"
+     data-export-pdf-url="{% url 'requirement-project-export' project.pk 'pdf' %}">
   <div class="page-header">
     <h1>
       {{ project.name }}
@@ -12,36 +15,67 @@
       <span class="label requirements-project-pill requirements-project-pill-{{ project.status }}">
         {{ project.get_status_display }}
       </span>
-      <div class="btn-group pull-right">
-        <a href="{% url 'requirement-project-list' %}" class="btn btn-link">
-          <i class="fa fa-arrow-left"></i> {% trans "All projects" %}
-        </a>
-        <a href="{% url 'requirement-project-edit' project.pk %}" class="btn btn-default">
+    </h1>
+    <div class="requirements-page-toolbar">
+      <a href="{% url 'requirement-project-list' %}" class="btn btn-link" title="{% trans 'Back to projects list' %}">
+        <i class="fa fa-arrow-left"></i> {% trans "All projects" %}
+      </a>
+
+      <div class="btn-group">
+        <a href="{% url 'requirement-project-edit' project.pk %}" class="btn btn-primary">
           <i class="fa fa-edit"></i> {% trans "Edit" %}
         </a>
-        <a href="{% url 'requirement-project-delete' project.pk %}" class="btn btn-default">
-          <i class="fa fa-trash"></i> {% trans "Delete" %}
-        </a>
-        <a href="{% url 'requirement-list' %}?project={{ project.pk }}" class="btn btn-default">
-          <i class="fa fa-list"></i> {% trans "Filter requirements" %}
-        </a>
-        <a href="{% url 'requirement-project-baseline-list' project.pk %}" class="btn btn-default">
-          <i class="fa fa-camera"></i> {% trans "Baselines" %}
-        </a>
-        <a href="{% url 'requirement-project-evidence-pack' project.pk %}" class="btn btn-default">
-          <i class="fa fa-archive"></i> {% trans "Evidence pack" %}
-        </a>
-        <a href="{% url 'requirement-project-export' project.pk 'docx' %}" class="btn btn-default">
-          <i class="fa fa-file-word-o"></i> DOCX
-        </a>
-        <a href="{% url 'requirement-project-export' project.pk 'pdf' %}" class="btn btn-default">
-          <i class="fa fa-file-pdf-o"></i> PDF
+        <a href="{% url 'requirement-project-delete' project.pk %}" class="btn btn-default" title="{% trans 'Delete this project' %}">
+          <i class="fa fa-trash"></i>
         </a>
       </div>
-    </h1>
+
+      <div class="requirements-toolbar-spacer"></div>
+
+      <div class="btn-group">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <i class="fa fa-eye"></i> {% trans "Related" %} <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+          <li><a href="{% url 'requirement-list' %}?project={{ project.pk }}">
+            <i class="fa fa-list"></i> {% trans "Filter requirements" %}
+          </a></li>
+          <li><a href="{% url 'requirement-project-baseline-list' project.pk %}">
+            <i class="fa fa-camera"></i> {% trans "Baselines" %}
+          </a></li>
+        </ul>
+      </div>
+
+      <div class="btn-group">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <i class="fa fa-download"></i> {% trans "Export" %} <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-right">
+          <li class="dropdown-header">{% trans "With Sankey diagram" %}</li>
+          <li><a href="#" id="project-export-docx-with-sankey">
+            <i class="fa fa-file-word-o"></i> DOCX
+          </a></li>
+          <li><a href="#" id="project-export-pdf-with-sankey">
+            <i class="fa fa-file-pdf-o"></i> PDF
+          </a></li>
+          <li role="separator" class="divider"></li>
+          <li class="dropdown-header">{% trans "Table only (no diagram)" %}</li>
+          <li><a href="{% url 'requirement-project-export' project.pk 'docx' %}">
+            <i class="fa fa-file-word-o"></i> DOCX
+          </a></li>
+          <li><a href="{% url 'requirement-project-export' project.pk 'pdf' %}">
+            <i class="fa fa-file-pdf-o"></i> PDF
+          </a></li>
+          <li role="separator" class="divider"></li>
+          <li><a href="{% url 'requirement-project-evidence-pack' project.pk %}">
+            <i class="fa fa-archive"></i> {% trans "Evidence pack (.zip)" %}
+          </a></li>
+        </ul>
+      </div>
+    </div>
   </div>
 
-  <div class="row">
+  <div class="row requirements-row-equal">
     <div class="col-md-6">
       <div class="panel panel-default">
         <div class="panel-heading"><strong>{% trans "Programme metadata" %}</strong></div>
@@ -120,8 +154,18 @@
       <strong>{% trans "Traceability (project-scoped)" %}</strong>
     </div>
     <div class="panel-body">
-      <div id="project-sankey" style="min-height:280px;"></div>
-      <script type="application/json" id="project-sankey-payload">{{ sankey_payload_json|safe }}</script>
+      <div id="project-sankey-wrap">
+        <div id="project-sankey-status" class="text-muted"></div>
+        <div id="project-sankey-legend" class="sankey-legend" aria-label="{% trans 'Sankey colour legend' %}"></div>
+        <svg id="project-sankey"></svg>
+      </div>
+      {% comment %}
+        Payload sits on a hidden <input value=...> so it's CSP-safe —
+        strict script-src can block <script type="application/json"> data
+        blocks in some configurations. The renderer reads .value (auto-
+        unescaped JSON string) instead of .textContent.
+      {% endcomment %}
+      <input type="hidden" id="project-sankey-payload" value="{{ sankey_payload_json }}">
     </div>
   </div>
 
@@ -161,7 +205,20 @@
     </div>
     {% endif %}
   </div>
+
+  {% comment %}
+    JS-driven export uses fetch() with the page's CSRF token and posts
+    the live-captured SVG. Keep a bare CSRF input on the page so
+    wireSankeyExport can find it via querySelector.
+  {% endcomment %}
+  <form id="project-export-csrf" style="display:none;">{% csrf_token %}</form>
 </div>
 
-<link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">
+{% load requirements_extras %}
+<link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}?v={% plugin_version %}">
+<script src="{% static 'tcms_requirements/vendor/d3.v7.min.js' %}"></script>
+<script src="{% static 'tcms_requirements/vendor/d3-sankey.min.js' %}"></script>
+<script src="{% static 'tcms_requirements/js/traceability.js' %}?v={% plugin_version %}"></script>
+<script src="{% static 'tcms_requirements/js/traceability_export.js' %}?v={% plugin_version %}"></script>
+<script src="{% static 'tcms_requirements/js/project_detail.js' %}?v={% plugin_version %}"></script>
 {% endblock %}

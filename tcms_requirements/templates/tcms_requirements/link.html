@@ -9,10 +9,12 @@
     <h1>
       {% trans "Link test case" %}
       <small><code>{{ requirement.identifier }}</code> — {{ requirement.title }}</small>
-      <a href="{% url 'requirement-get' requirement.pk %}" class="btn btn-default pull-right">
-        <i class="fa fa-arrow-left"></i> {% trans "Back" %}
-      </a>
     </h1>
+    <div class="requirements-page-toolbar">
+      <a href="{% url 'requirement-get' requirement.pk %}" class="btn btn-link">
+        <i class="fa fa-arrow-left"></i> {% trans "Back to requirement" %}
+      </a>
+    </div>
   </div>
 
   <div class="row">

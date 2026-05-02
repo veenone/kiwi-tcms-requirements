@@ -33,6 +33,47 @@ def _add_kv_table(doc, rows):
     return table
 
 
+def _start_landscape_first_section(doc):
+    """Configure the document's first section as landscape A4.
+
+    Used by reports that lead with a Sankey image — the wide page gives
+    the diagram room to breathe before flowing into portrait body pages.
+    """
+    from docx.enum.section import WD_ORIENT  # noqa: WPS433
+    from docx.shared import Cm  # noqa: WPS433
+
+    section = doc.sections[0]
+    section.orientation = WD_ORIENT.LANDSCAPE
+    # Swap width / height so paper dimensions match the orientation.
+    section.page_width, section.page_height = section.page_height, section.page_width
+    section.top_margin = Cm(1.5)
+    section.bottom_margin = Cm(1.5)
+    section.left_margin = Cm(1.5)
+    section.right_margin = Cm(1.5)
+
+
+def _begin_portrait_section(doc):
+    """Add a section break and switch the next section back to portrait.
+
+    Lands the body of the report on standard A4 portrait pages after
+    the leading landscape Sankey.
+    """
+    from docx.enum.section import WD_ORIENT, WD_SECTION  # noqa: WPS433
+    from docx.shared import Cm  # noqa: WPS433
+
+    new_section = doc.add_section(WD_SECTION.NEW_PAGE)
+    new_section.orientation = WD_ORIENT.PORTRAIT
+    # Swap so width is the smaller of the two dimensions (portrait).
+    if new_section.page_width > new_section.page_height:
+        new_section.page_width, new_section.page_height = (
+            new_section.page_height, new_section.page_width,
+        )
+    new_section.top_margin = Cm(2)
+    new_section.bottom_margin = Cm(2)
+    new_section.left_margin = Cm(2)
+    new_section.right_margin = Cm(2)
+
+
 def build_requirement_list_docx(queryset, *, title="Requirements report") -> bytes:
     from docx import Document  # noqa: WPS433
 
@@ -171,34 +212,41 @@ def _add_count_table(doc, rows, label_key, extra_key=None):
 def build_traceability_docx(rows, *, title="Requirements traceability report", diagram_png=None) -> bytes:
     """Traceability export: Sankey image (if diagram_png bytes supplied) + table.
 
-    `rows` is the flattened row list from `traceability.report.flatten_traceability`.
-    `diagram_png` is optional PNG bytes — skipped if None.
+    When a diagram is supplied, it lands on a dedicated landscape A4
+    first page; the rest of the report flows in portrait.
     """
     from docx import Document  # noqa: WPS433
     from docx.shared import Inches
 
     doc = Document()
-    doc.add_heading(title, level=0)
-    doc.add_paragraph(f"Generated: {_now_iso()} · kiwitcms-requirements v{__version__}")
+    doc.core_properties.title = title
 
     if diagram_png:
-        _add_heading(doc, "Traceability diagram", level=1)
+        _start_landscape_first_section(doc)
+        doc.add_heading("Traceability diagram", level=0)
+        doc.add_paragraph(f"{title}")
+        doc.add_paragraph(
+            f"Generated: {_now_iso()} · kiwitcms-requirements v{__version__}"
+        )
         try:
-            doc.add_picture(io.BytesIO(diagram_png), width=Inches(6.5))
+            doc.add_picture(io.BytesIO(diagram_png), width=Inches(9.5))
             doc.add_paragraph(
-                "Rendered from the browser view at the time of export. Blue = requirements, "
-                "orange = test cases, green = test plans, purple = bugs, "
-                "red strokes = suspect links."
+                "Rendered from the browser view at the time of export. "
+                "Blue = requirements, orange = test cases, green = test plans, "
+                "purple = bugs, red strokes = suspect links."
             )
-        except Exception as exc:  # noqa: BLE001 — broken PNG shouldn't drop the table
+        except Exception as exc:  # noqa: BLE001 — broken PNG shouldn't drop the report
             import logging  # noqa: WPS433
             logging.getLogger("tcms_requirements").warning(
-                "DOCX add_picture failed: %s — continuing with table-only report.", exc,
+                "DOCX add_picture failed: %s — continuing without diagram.", exc,
             )
             doc.add_paragraph(
                 "[Diagram could not be embedded — see the table below for the same data.]"
             )
+        _begin_portrait_section(doc)
 
+    doc.add_heading(title, level=0)
+    doc.add_paragraph(f"Generated: {_now_iso()} · kiwitcms-requirements v{__version__}")
     _add_heading(doc, "Traceability table", level=1)
     if not rows:
         doc.add_paragraph("No traceability rows match the current filters.")
@@ -231,12 +279,44 @@ def build_traceability_docx(rows, *, title="Requirements traceability report", d
     return _dump(doc)
 
 
-def build_project_docx(project, requirements, snapshot) -> bytes:
-    """Project programme report: metadata header + scoped requirement list."""
+def build_project_docx(project, requirements, snapshot, *, diagram_png=None) -> bytes:
+    """Project programme report: metadata header + scoped requirement list.
+
+    When a diagram is supplied, the Sankey lands on a dedicated landscape
+    A4 first page; the rest of the programme report flows in portrait.
+    """
     from docx import Document  # noqa: WPS433
+    from docx.shared import Inches  # noqa: WPS433
 
     doc = Document()
-    doc.add_heading(f"Project: {project.name}", level=0)
+    title = _project_doc_title(project)
+    doc.core_properties.title = title
+
+    if diagram_png:
+        _start_landscape_first_section(doc)
+        doc.add_heading("Traceability diagram", level=0)
+        doc.add_paragraph(title)
+        doc.add_paragraph(
+            f"Generated: {_now_iso()} · kiwitcms-requirements v{__version__}"
+        )
+        try:
+            doc.add_picture(io.BytesIO(diagram_png), width=Inches(9.5))
+            doc.add_paragraph(
+                "Project-scoped Sankey rendered from the browser at the time "
+                "of export. Blue = requirements, orange = test cases, "
+                "green = test plans, purple = bugs, red strokes = suspect links."
+            )
+        except Exception as exc:  # noqa: BLE001 — broken PNG shouldn't drop the report
+            import logging  # noqa: WPS433
+            logging.getLogger("tcms_requirements").warning(
+                "DOCX add_picture failed: %s — continuing without diagram.", exc,
+            )
+            doc.add_paragraph(
+                "[Diagram could not be embedded — see the requirements table on the next page.]"
+            )
+        _begin_portrait_section(doc)
+
+    doc.add_heading(title, level=0)
     doc.add_paragraph(f"Generated: {_now_iso()} · kiwitcms-requirements v{__version__}")
 
     _add_heading(doc, "Programme metadata", level=1)
@@ -291,6 +371,20 @@ def build_project_docx(project, requirements, snapshot) -> bytes:
         cells[5].text = str(r.case_links.count())
 
     return _dump(doc)
+
+
+def _project_doc_title(project) -> str:
+    """Single-line title used in the DOCX heading and metadata.
+
+    Includes product + project name + project code so the file makes
+    sense out of context (e.g. when emailed to a stakeholder).
+    """
+    parts = [f"Project: {project.name}"]
+    if project.code:
+        parts.append(f"({project.code})")
+    if project.product_id:
+        parts.append(f"— {project.product.name}")
+    return " ".join(parts)
 
 
 def _project_metadata_rows(project) -> list:

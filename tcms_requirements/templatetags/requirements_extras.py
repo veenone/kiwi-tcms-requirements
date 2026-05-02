@@ -8,7 +8,15 @@ from django import template
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
+from tcms_requirements import __version__ as _PLUGIN_VERSION
+
 register = template.Library()
+
+
+@register.simple_tag
+def plugin_version():
+    """Plugin version string — used as a cache-bust on static asset URLs."""
+    return _PLUGIN_VERSION
 
 
 _STATUS_COLOURS = {
