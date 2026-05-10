@@ -231,17 +231,22 @@ class ProjectBaselineForm(forms.ModelForm):
 
 
 class CSVImportForm(forms.Form):
-    """Upload a CSV or XLSX for dry-run preview + commit."""
+    """Upload a CSV / XLSX / JSON for dry-run preview + commit."""
     csv_file = forms.FileField(
         label="Requirements file",
         help_text=(
-            "CSV (UTF-8) or XLSX with a header row. Required columns: "
-            "identifier, title. Optional: description, rationale, level, "
-            "category, source, source_section, document_file_name, "
-            "document_title, status, priority, product, project, feature, "
-            "parent_requirement, verification_method, doc_id, doc_revision, "
-            "asil, dal, iec62304_class, effective_date, change_reason, "
-            "jira_issue_key, external_refs. Download a template to see the full shape."
+            "CSV (UTF-8), XLSX, or JSON. Format detected by extension. "
+            "CSV/XLSX: required columns identifier + title; optional "
+            "description, rationale, level, category, source, "
+            "source_section, document_file_name, document_title, status, "
+            "priority, product, project, feature, parent_requirement, "
+            "verification_method, doc_id, doc_revision, asil, dal, "
+            "iec62304_class, effective_date, change_reason, "
+            "jira_issue_key, external_refs, linked_cases. JIRA-style "
+            "headers (External Issue ID, Summary, Linked Test Cases) "
+            "are auto-translated. JSON: shape produced by the JSON "
+            "exporter — full link fidelity (link_type, suspect, "
+            "coverage_notes preserved)."
         ),
     )
     dry_run = forms.BooleanField(

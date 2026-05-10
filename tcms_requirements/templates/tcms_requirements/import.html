@@ -47,17 +47,28 @@
       </div>
 
       <div class="panel panel-default">
-        <div class="panel-heading"><strong>{% trans "Accepted columns" %}</strong></div>
+        <div class="panel-heading"><strong>{% trans "Accepted formats" %}</strong></div>
         <div class="panel-body">
-          <p>{% trans "Required columns:" %} <code>identifier</code>, <code>title</code>.</p>
-          <p>{% trans "Optional columns (all free-text or FK names):" %}</p>
-          <code style="white-space:normal;">
-            description, rationale, category, source, source_section, level,
-            product, project, feature, parent_requirement, status, priority,
-            verification_method, asil, dal, iec62304_class, doc_id,
-            doc_revision, effective_date, change_reason, jira_issue_key,
-            external_refs (JSON).
-          </code>
+          <p>
+            <strong>{% trans "CSV / XLSX" %}</strong> &mdash;
+            {% trans "required columns:" %} <code>identifier</code>, <code>title</code>.
+            {% trans "Optional:" %}
+            <code style="white-space:normal;">
+              description, rationale, category, source, source_section, level,
+              product, project, feature, parent_requirement, status, priority,
+              verification_method, asil, dal, iec62304_class, doc_id,
+              doc_revision, effective_date, change_reason, jira_issue_key,
+              external_refs, linked_cases.
+            </code>
+          </p>
+          <p>
+            <strong>{% trans "JIRA CSV" %}</strong> &mdash;
+            {% blocktrans %}headers like <code>External Issue ID</code>, <code>Summary</code>, <code>Linked Test Cases</code> are auto-translated, so a JIRA export round-trips.{% endblocktrans %}
+          </p>
+          <p>
+            <strong>{% trans "JSON" %}</strong> &mdash;
+            {% blocktrans %}upload the shape produced by the JSON exporter (<code>{"requirements": [...]}</code>). Preserves full link fidelity: <code>link_type</code>, <code>suspect</code>, and <code>coverage_notes</code> survive the round-trip.{% endblocktrans %}
+          </p>
           <p><small>{% trans "FK values resolve by human-friendly names: category name, level code, requirement identifier for parent, etc." %}</small></p>
         </div>
       </div>

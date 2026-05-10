@@ -386,16 +386,16 @@
    Each column is a vertical lane that scrolls horizontally on overflow. */
 .requirements-kanban-board {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
-    overflow-x: auto;
     padding-bottom: 8px;
     align-items: flex-start;
 }
 
 .requirements-kanban-column {
-    flex: 0 0 280px;
-    min-width: 280px;
-    max-width: 320px;
+    flex: 1 1 240px;
+    min-width: 240px;
+    max-width: 360px;
     background: #f5f7fa;
     border: 1px solid #ededed;
     border-radius: 4px;
