@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Delete project" %}: {{ project.name }}{% endblock %}
+
+{% block contents %}
+<div class="container-fluid">
+  <div class="page-header">
+    <h1>{% trans "Delete project" %}: {{ project.name }}</h1>
+  </div>
+  <p>
+    {% blocktrans with name=project.name %}
+    This will permanently delete project <strong>{{ name }}</strong>, along with its
+    feature and requirement assignments to it. Consider setting the status to
+    <code>cancelled</code> or <code>closed</code> instead so historical data is retained.
+    {% endblocktrans %}
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">
+      <i class="fa fa-trash"></i> {% trans "Delete permanently" %}
+    </button>
+    <a href="{% url 'requirement-project-get' project.pk %}" class="btn btn-default">
+      {% trans "Cancel" %}
+    </a>
+  </form>
+</div>
+{% endblock %}

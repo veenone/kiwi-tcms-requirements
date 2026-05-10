@@ -8,7 +8,15 @@ from django import template
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
+from tcms_requirements import __version__ as _PLUGIN_VERSION
+
 register = template.Library()
+
+
+@register.simple_tag
+def plugin_version():
+    """Plugin version string — used as a cache-bust on static asset URLs."""
+    return _PLUGIN_VERSION
 
 
 _STATUS_COLOURS = {
@@ -36,12 +44,15 @@ _LINK_TYPE_ICONS = {
 }
 
 
+_PILL_CLASS = "label requirements-pill"
+
+
 @register.simple_tag
 def status_badge(status: str):
     css = _STATUS_COLOURS.get(status, "label-default")
     label = status.replace("_", " ").title() if status else "—"
     return mark_safe(
-        f'<span class="label {css}" role="status">{escape(label)}</span>'
+        f'<span class="{_PILL_CLASS} {css}" role="status">{escape(label)}</span>'
     )
 
 
@@ -50,7 +61,7 @@ def priority_badge(priority: str):
     css = _PRIORITY_COLOURS.get(priority, "label-default")
     label = priority.title() if priority else "—"
     return mark_safe(
-        f'<span class="label {css}" role="status">{escape(label)}</span>'
+        f'<span class="{_PILL_CLASS} {css}" role="status">{escape(label)}</span>'
     )
 
 
@@ -68,7 +79,7 @@ def suspect_badge(suspect: bool):
     if not suspect:
         return ""
     return mark_safe(
-        '<span class="label label-danger" role="status" '
+        '<span class="label requirements-pill label-danger" role="status" '
         'title="Requirement has changed since this link was created — reviewer should re-confirm">'
         '<i class="fa fa-exclamation-triangle"></i> Suspect</span>'
     )

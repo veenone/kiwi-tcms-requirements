@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "New baseline" %} · {{ project.name }}{% endblock %}
+
+{% block contents %}
+<div class="container-fluid" id="requirements-project-baseline-new">
+  <div class="page-header">
+    <h1>
+      {% trans "Freeze a new baseline" %}
+      <small>{{ project.name }}{% if project.code %} · <code>{{ project.code }}</code>{% endif %}</small>
+    </h1>
+    <div class="requirements-page-toolbar">
+      <a href="{% url 'requirement-project-baseline-list' project.pk %}" class="btn btn-link">
+        <i class="fa fa-arrow-left"></i> {% trans "All baselines" %}
+      </a>
+    </div>
+  </div>
+
+  <div class="row requirements-row-equal">
+    <div class="col-md-7">
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>{% trans "Baseline metadata" %}</strong></div>
+        <div class="panel-body">
+          <form method="post" novalidate class="requirements-baseline-form">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="form-group {% if form.name.errors %}has-error{% endif %}">
+              <label for="{{ form.name.id_for_label }}">
+                {% trans "Name" %} <span class="text-danger">*</span>
+              </label>
+              {{ form.name }}
+              <p class="help-block">{% trans "Unique within this project — e.g. v1.0, sprint-23, audit-2026Q2." %}</p>
+              {{ form.name.errors }}
+            </div>
+
+            <div class="form-group {% if form.version.errors %}has-error{% endif %}">
+              <label for="{{ form.version.id_for_label }}">
+                {% trans "Kiwi Version" %}
+                <small class="text-muted">{% trans "(optional)" %}</small>
+              </label>
+              {{ form.version }}
+              <p class="help-block">{% trans "Pin this baseline to a Kiwi management.Version row so release notes can quote a single identifier." %}</p>
+              {{ form.version.errors }}
+            </div>
+
+            <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
+              <label for="{{ form.notes.id_for_label }}">
+                {% trans "Notes" %}
+                <small class="text-muted">{% trans "(optional)" %}</small>
+              </label>
+              {{ form.notes }}
+              <p class="help-block">{% trans "What's the purpose of this snapshot? Audit reviewers will see this verbatim." %}</p>
+              {{ form.notes.errors }}
+            </div>
+
+            <hr>
+
+            <div class="requirements-baseline-form-actions">
+              <button type="submit" class="btn btn-primary">
+                <i class="fa fa-camera"></i> {% trans "Freeze baseline" %}
+              </button>
+              <a href="{% url 'requirement-project-baseline-list' project.pk %}" class="btn btn-link">
+                {% trans "Cancel" %}
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-5">
+      <div class="panel panel-info">
+        <div class="panel-heading"><strong>{% trans "What gets frozen" %}</strong></div>
+        <div class="panel-body">
+          <ul class="requirements-baseline-bulletlist">
+            <li>
+              <i class="fa fa-list"></i>
+              {% blocktrans %}Every <code>Requirement</code> currently scoped to this project — identifier, title, level, category, status, and full text are snapshotted into <code>BaselineRequirementSnapshot</code> rows.{% endblocktrans %}
+            </li>
+            <li>
+              <i class="fa fa-link"></i>
+              {% blocktrans %}Every <code>RequirementTestCaseLink</code> attached to those requirements (link type, suspect flag, coverage notes) lands in <code>BaselineLinkSnapshot</code>.{% endblocktrans %}
+            </li>
+            <li>
+              <i class="fa fa-lock"></i>
+              {% trans "The snapshot is immutable. Edits to live requirements after freezing don't alter it — that's the whole point." %}
+            </li>
+            <li>
+              <i class="fa fa-balance-scale"></i>
+              {% trans "Diff any two baselines to see what changed between releases." %}
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>{% trans "When to freeze" %}</strong></div>
+        <div class="panel-body">
+          <p class="text-muted" style="margin-bottom: 8px;">
+            {% trans "Typical milestones:" %}
+          </p>
+          <ul class="text-muted" style="padding-left: 18px; margin: 0;">
+            <li>{% trans "Sprint or iteration end" %}</li>
+            <li>{% trans "Release candidate cut" %}</li>
+            <li>{% trans "Audit / review handover" %}</li>
+            <li>{% trans "Customer acceptance gate" %}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">
+{% endblock %}

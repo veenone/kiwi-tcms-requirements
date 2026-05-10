@@ -5,17 +5,15 @@
 
 {% block contents %}
 <div class="container-fluid" id="requirements-list">
-  <div class="page-header requirements-toolbar">
+  <div class="page-header">
     <h1>
       {% trans "Requirements" %}
       <small>{{ paginator.count|default:requirements|length }} {% trans "total" %}</small>
     </h1>
-    <div class="btn-toolbar pull-right requirements-toolbar-actions">
-      <div class="btn-group">
-        <a href="{% url 'requirement-new' %}" class="btn btn-primary">
-          <i class="fa fa-plus"></i> {% trans "New" %}
-        </a>
-      </div>
+    <div class="requirements-page-toolbar">
+      <a href="{% url 'requirement-new' %}" class="btn btn-primary">
+        <i class="fa fa-plus"></i> {% trans "New requirement" %}
+      </a>
       <div class="btn-group">
         <a href="{% url 'requirement-dashboard' %}" class="btn btn-default">
           <i class="fa fa-bar-chart"></i> {% trans "Dashboard" %}
@@ -23,39 +21,54 @@
         <a href="{% url 'requirement-traceability' %}" class="btn btn-default">
           <i class="fa fa-sitemap"></i> {% trans "Traceability" %}
         </a>
-      </div>
-      <div class="btn-group">
-        <a href="{% url 'requirement-import' %}" class="btn btn-default">
-          <i class="fa fa-upload"></i> {% trans "Import" %}
+        <a href="{% url 'requirement-project-list' %}" class="btn btn-default">
+          <i class="fa fa-folder-open-o"></i> {% trans "Projects" %}
         </a>
+      </div>
+
+      <div class="requirements-toolbar-spacer"></div>
+
+      <a href="{% url 'requirement-import' %}" class="btn btn-default">
+        <i class="fa fa-upload"></i> {% trans "Import" %}
+      </a>
+      <div class="btn-group">
         <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"
                 aria-haspopup="true" aria-expanded="false">
           <i class="fa fa-download"></i> {% trans "Export" %} <span class="caret"></span>
         </button>
-        <ul class="dropdown-menu">
-          <li><a href="{% url 'requirement-export-hub' %}">{% trans "Export hub" %}</a></li>
+        <ul class="dropdown-menu dropdown-menu-right">
+          <li><a href="{% url 'requirement-export-hub' %}">
+            <i class="fa fa-th"></i> {% trans "Export hub" %}
+          </a></li>
           <li role="separator" class="divider"></li>
+          <li class="dropdown-header">{% trans "Tabular" %}</li>
           <li><a href="{% url 'requirement-export' 'csv' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">CSV</a></li>
-          <li><a href="{% url 'requirement-export' 'jira-csv' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">JIRA CSV</a></li>
+          <li><a href="{% url 'requirement-export' 'jira-csv' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">JIRA-import CSV</a></li>
           <li><a href="{% url 'requirement-export' 'json' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">JSON</a></li>
           <li role="separator" class="divider"></li>
-          <li><a href="{% url 'requirement-export' 'docx' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">DOCX</a></li>
-          <li><a href="{% url 'requirement-export' 'pdf' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">PDF</a></li>
+          <li class="dropdown-header">{% trans "Document" %}</li>
+          <li><a href="{% url 'requirement-export' 'docx' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
+            <i class="fa fa-file-word-o"></i> DOCX
+          </a></li>
+          <li><a href="{% url 'requirement-export' 'pdf' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
+            <i class="fa fa-file-pdf-o"></i> PDF
+          </a></li>
         </ul>
       </div>
     </div>
-    <div style="clear:both;"></div>
   </div>
 
-  <form method="get" class="form-inline requirements-filters">
+  <form method="get" class="requirements-filters">
     {% for field in filter_form %}
-      <div class="form-group" style="margin-right:8px;">
+      <div class="form-group">
         <label for="id_{{ field.name }}">{{ field.label }}</label>
         {{ field }}
       </div>
     {% endfor %}
-    <button type="submit" class="btn btn-default">{% trans "Filter" %}</button>
-    <a href="{% url 'requirement-list' %}" class="btn btn-link">{% trans "Reset" %}</a>
+    <div class="requirements-filters-actions">
+      <button type="submit" class="btn btn-primary">{% trans "Apply" %}</button>
+      <a href="{% url 'requirement-list' %}" class="btn btn-link">{% trans "Reset" %}</a>
+    </div>
   </form>
 
   {% if requirements %}

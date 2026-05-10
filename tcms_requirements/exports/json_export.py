@@ -35,6 +35,8 @@ def _requirement_payload(req) -> dict:
             "reference": req.source.reference,
         } if req.source_id else None,
         "source_section": req.source_section,
+        "document_file_name": req.document_file_name,
+        "document_title": req.document_title,
         "level": req.level.code if req.level_id else None,
         "product": req.product.name if req.product_id else None,
         "project": req.project.name if req.project_id else None,

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}
+{% if form.instance.pk %}{% trans "Edit project" %}: {{ form.instance.name }}{% else %}{% trans "New project" %}{% endif %}
+{% endblock %}
+
+{% block contents %}
+<div class="container-fluid" id="requirements-project-mutable">
+  <div class="page-header">
+    <h1>
+      {% if form.instance.pk %}
+        {% trans "Edit project" %}: {{ form.instance.name }}
+      {% else %}
+        {% trans "New project" %}
+      {% endif %}
+    </h1>
+  </div>
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <form method="post" class="form-horizontal requirements-form">
+    {% csrf_token %}
+
+    <fieldset class="requirements-fieldset">
+      <legend>{% trans "Identity" %}</legend>
+      {% include "tcms_requirements/_field.html" with field=form.product %}
+      {% include "tcms_requirements/_field.html" with field=form.name %}
+      {% include "tcms_requirements/_field.html" with field=form.code %}
+      {% include "tcms_requirements/_field.html" with field=form.description %}
+    </fieldset>
+
+    <fieldset class="requirements-fieldset">
+      <legend>{% trans "Programme" %}</legend>
+      {% include "tcms_requirements/_field.html" with field=form.status %}
+      {% include "tcms_requirements/_field.html" with field=form.owner %}
+      {% include "tcms_requirements/_field.html" with field=form.stakeholders %}
+      {% include "tcms_requirements/_field.html" with field=form.start_date %}
+      {% include "tcms_requirements/_field.html" with field=form.target_end_date %}
+      {% include "tcms_requirements/_field.html" with field=form.actual_end_date %}
+    </fieldset>
+
+    <fieldset class="requirements-fieldset">
+      <legend>{% trans "Scope" %}</legend>
+      {% include "tcms_requirements/_field.html" with field=form.test_plans %}
+    </fieldset>
+
+    {% with custom_fields=form.custom_field_iter %}
+    {% for field in custom_fields %}
+    {% if forloop.first %}
+    <fieldset class="requirements-fieldset">
+      <legend>{% trans "Custom fields" %}</legend>
+    {% endif %}
+      {% include "tcms_requirements/_field.html" with field=field %}
+    {% if forloop.last %}
+    </fieldset>
+    {% endif %}
+    {% endfor %}
+    {% endwith %}
+
+    <fieldset class="requirements-fieldset collapsible">
+      <legend>
+        <a data-toggle="collapse" href="#fs-project-external">
+          {% trans "External system keys" %}
+        </a>
+      </legend>
+      <div id="fs-project-external" class="collapse">
+        {% include "tcms_requirements/_field.html" with field=form.jira_project_key %}
+        {% include "tcms_requirements/_field.html" with field=form.external_refs %}
+      </div>
+    </fieldset>
+
+    <div class="form-group">
+      <div class="col-sm-offset-3 col-sm-8">
+        <button type="submit" class="btn btn-primary">
+          <i class="fa fa-save"></i> {% trans "Save" %}
+        </button>
+        <a href="{% if form.instance.pk %}{% url 'requirement-project-get' form.instance.pk %}{% else %}{% url 'requirement-project-list' %}{% endif %}"
+           class="btn btn-default">{% trans "Cancel" %}</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">
+{% endblock %}

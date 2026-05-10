@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Baseline" %} {{ baseline.name }}{% endblock %}
+
+{% block contents %}
+<div class="container-fluid" id="requirements-project-baseline-detail">
+  <div class="page-header">
+    <h1>
+      {% trans "Baseline" %} <code>{{ baseline.name }}</code>
+      <small>{{ project.name }}{% if project.code %} · <code>{{ project.code }}</code>{% endif %}</small>
+    </h1>
+    <div class="requirements-page-toolbar">
+      <a href="{% url 'requirement-project-baseline-list' project.pk %}" class="btn btn-link">
+        <i class="fa fa-arrow-left"></i> {% trans "All baselines" %}
+      </a>
+      <div class="requirements-toolbar-spacer"></div>
+      <div class="btn-group">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <i class="fa fa-download"></i> {% trans "Export" %} <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-right">
+          <li><a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'docx' %}">
+            <i class="fa fa-file-word-o"></i> DOCX
+          </a></li>
+          <li><a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'pdf' %}">
+            <i class="fa fa-file-pdf-o"></i> PDF
+          </a></li>
+          <li><a href="{% url 'requirement-project-baseline-export' project.pk baseline.pk 'csv' %}">
+            <i class="fa fa-file-text-o"></i> CSV
+          </a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="row requirements-row-equal">
+    <div class="col-md-6">
+      <div class="panel panel-default">
+        <div class="panel-heading"><h3 class="panel-title">{% trans "Metadata" %}</h3></div>
+        <div class="panel-body">
+          <dl class="dl-horizontal">
+            <dt>{% trans "Project" %}</dt><dd>{{ project.name }}</dd>
+            <dt>{% trans "Kiwi Version" %}</dt>
+            <dd>{% if baseline.version %}{{ baseline.version }}{% else %}—{% endif %}</dd>
+            <dt>{% trans "Created" %}</dt><dd>{{ baseline.created_at|date:"Y-m-d H:i T" }}</dd>
+            <dt>{% trans "Created by" %}</dt>
+            <dd>
+              {% if baseline.created_by %}
+                {{ baseline.created_by.get_full_name|default:baseline.created_by.username }}
+              {% else %}—{% endif %}
+            </dd>
+            <dt>{% trans "Notes" %}</dt><dd>{{ baseline.notes|default:"—"|linebreaksbr }}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    {% if sibling_baselines %}
+    <div class="col-md-6">
+      <div class="panel panel-default">
+        <div class="panel-heading"><h3 class="panel-title">{% trans "Diff with another baseline" %}</h3></div>
+        <div class="panel-body">
+          <ul class="list-unstyled">
+            {% for sib in sibling_baselines %}
+            <li>
+              <a href="{% url 'requirement-project-baseline-diff' project.pk baseline.pk sib.pk %}">
+                <i class="fa fa-exchange"></i> {{ baseline.name }} ↔ {{ sib.name }}
+              </a>
+              <small class="text-muted">{{ sib.created_at|date:"Y-m-d" }}</small>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h3 class="panel-title">
+        {% trans "Frozen requirements" %} ({{ requirement_snapshots.count }})
+      </h3>
+    </div>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>{% trans "Identifier" %}</th>
+          <th>{% trans "Title" %}</th>
+          <th>{% trans "Status" %}</th>
+          <th>{% trans "Priority" %}</th>
+          <th>{% trans "Level" %}</th>
+          <th>{% trans "Safety" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in requirement_snapshots %}
+        <tr>
+          <td>
+            {% if s.requirement_id %}
+              <a href="{% url 'requirement-get' s.requirement_id %}"><code>{{ s.identifier }}</code></a>
+            {% else %}
+              <code>{{ s.identifier }}</code>
+            {% endif %}
+          </td>
+          <td>{{ s.title }}</td>
+          <td>{{ s.status }}</td>
+          <td>{{ s.priority|default:"—" }}</td>
+          <td>{{ s.level_code|default:"—" }}</td>
+          <td>
+            {% if s.asil %}ASIL {{ s.asil }}{% endif %}
+            {% if s.dal %} DAL {{ s.dal }}{% endif %}
+            {% if s.iec62304_class %} IEC62304 {{ s.iec62304_class }}{% endif %}
+            {% if not s.asil and not s.dal and not s.iec62304_class %}—{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-muted">{% trans "No requirements were in scope when this baseline was frozen." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h3 class="panel-title">
+        {% trans "Frozen test-case links" %} ({{ link_snapshots.count }})
+      </h3>
+    </div>
+    {% if link_snapshots %}
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>{% trans "Requirement" %}</th>
+          <th>{% trans "Case" %}</th>
+          <th>{% trans "Link type" %}</th>
+          <th>{% trans "Suspect" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in link_snapshots %}
+        <tr>
+          <td><code>{{ l.requirement_identifier }}</code></td>
+          <td>TC-{{ l.case_id }}</td>
+          <td>{{ l.link_type }}</td>
+          <td>{% if l.suspect %}<span class="label label-warning">suspect</span>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="panel-body text-muted">{% trans "No links were in scope when this baseline was frozen." %}</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

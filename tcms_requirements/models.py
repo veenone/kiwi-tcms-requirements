@@ -125,7 +125,21 @@ class Project(models.Model):
 
     Example: product "Infotainment ECU" → project "Platform 2026" with its
     own requirement set. FK back to Kiwi's `tcms.management.Product`.
+
+    Since v0.3.0 the Project carries enough programme-record data to
+    serve as a lightweight PM layer: status workflow, owner/stakeholder
+    assignment, date milestones, M2M link to Kiwi's `TestPlan`
+    (defines the set of plans in scope), and cross-tool keys.
     """
+
+    STATUS_CHOICES = [
+        ("planning", "Planning"),
+        ("active", "Active"),
+        ("on_hold", "On hold"),
+        ("closed", "Closed"),
+        ("cancelled", "Cancelled"),
+    ]
+
     product = models.ForeignKey(
         "management.Product",
         on_delete=models.CASCADE,
@@ -139,6 +153,67 @@ class Project(models.Model):
         help_text="Short identifier unique within the product (e.g. 'PLAT26').",
     )
     description = models.TextField(blank=True, default="")
+
+    # ── programme record ─────────────────────────────────────────────
+    status = models.CharField(
+        max_length=24,
+        choices=STATUS_CHOICES,
+        default="active",
+        db_index=True,
+        help_text="Programme lifecycle state. Drives list filters and dashboard priority.",
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="owned_requirement_projects",
+        help_text="Single accountable stakeholder.",
+    )
+    stakeholders = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="stakeholder_requirement_projects",
+        blank=True,
+        help_text="CC list for notifications and reports.",
+    )
+    start_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Target or actual programme kickoff.",
+    )
+    target_end_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Planned completion date; used in timeline KPIs.",
+    )
+    actual_end_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Populated when the programme closes.",
+    )
+
+    # ── scope (link to Kiwi's own test-scope primitive) ──────────────
+    test_plans = models.ManyToManyField(
+        "testplans.TestPlan",
+        related_name="requirement_projects",
+        blank=True,
+        help_text="Test plans in scope for this project. Drives coverage-gap detection.",
+    )
+
+    # ── external-system keys ─────────────────────────────────────────
+    jira_project_key = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="JIRA project key (e.g. 'PROJ') for cross-tool mapping.",
+    )
+    external_refs = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Open-ended map for other ALM / PM tool IDs (Polarion, Azure DevOps, …).",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -150,6 +225,74 @@ class Project(models.Model):
 
     def __str__(self):
         return f"{self.product.name} / {self.name}"
+
+    @property
+    def is_terminal(self) -> bool:
+        return self.status in {"closed", "cancelled"}
+
+    def get_absolute_url(self):
+        from django.urls import reverse  # noqa: WPS433 — already imported, keeping block-local
+        return reverse("requirement-project-get", args=[self.pk])
+
+
+class CustomFieldDefinition(models.Model):
+    """Admin-managed extra fields, rendered dynamically on a target form.
+
+    Values are stored in the target entity's existing `external_refs`
+    JSON column keyed by `slug`, so adding or removing a definition does
+    not require a schema migration.
+
+    Example: an admin defines `slug="request_id"`, `label="Request ID"`,
+    `field_type="text"`, `target_model="project"`. From then on the
+    Project create/edit form renders an extra "Request ID" text field
+    and persists it under `project.external_refs["request_id"]`.
+    """
+
+    TARGET_CHOICES = [
+        ("project", "Project"),
+        ("requirement", "Requirement"),
+    ]
+
+    FIELD_TYPE_CHOICES = [
+        ("text", "Single-line text"),
+        ("textarea", "Multi-line text"),
+        ("url", "URL"),
+        ("int", "Integer"),
+        ("date", "Date"),
+    ]
+
+    target_model = models.CharField(
+        max_length=24,
+        choices=TARGET_CHOICES,
+        db_index=True,
+        help_text="Which entity's create/edit form this field appears on.",
+    )
+    slug = models.SlugField(
+        max_length=64,
+        help_text="Machine name; becomes the key in external_refs JSON.",
+    )
+    label = models.CharField(max_length=128)
+    field_type = models.CharField(
+        max_length=16,
+        choices=FIELD_TYPE_CHOICES,
+        default="text",
+    )
+    help_text = models.CharField(max_length=255, blank=True, default="")
+    required = models.BooleanField(default=False)
+    order = models.PositiveSmallIntegerField(
+        default=100,
+        help_text="Lower numbers render first.",
+    )
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["target_model", "order", "slug"]
+        unique_together = [("target_model", "slug")]
+
+    def __str__(self):
+        return f"{self.get_target_model_display()} :: {self.label} ({self.slug})"
 
 
 class Feature(models.Model):
@@ -292,6 +435,19 @@ class Requirement(models.Model):
         default="",
         help_text="Section or page reference within the source doc (e.g. '§4.2.1').",
     )
+    document_file_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="File name of the source document (e.g. 'system-spec_v1.2.pdf').",
+    )
+    document_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Formal title of the source document "
+                  "(e.g. 'System Requirements Specification — Platform 2026').",
+    )
     level = models.ForeignKey(
         RequirementLevel,
         on_delete=models.PROTECT,
@@ -353,15 +509,52 @@ class Requirement(models.Model):
     )
 
     # ── safety / criticality (all blank-safe) ───────────────────────
-    asil = models.CharField(max_length=4, choices=ASIL_CHOICES, blank=True, default="")
-    sil = models.CharField(max_length=4, choices=SIL_CHOICES, blank=True, default="")
+    asil = models.CharField(
+        max_length=4,
+        choices=ASIL_CHOICES,
+        blank=True,
+        default="",
+        help_text=(
+            "Automotive Safety Integrity Level per ISO 26262. QM = quality "
+            "managed (no safety impact); A → D is increasing safety risk, "
+            "D being the most stringent (e.g. airbag deployment). Leave "
+            "blank for non-automotive or non-safety requirements."
+        ),
+    )
+    sil = models.CharField(
+        max_length=4,
+        choices=SIL_CHOICES,
+        blank=True,
+        default="",
+        help_text=(
+            "Safety Integrity Level per IEC 61508 (industrial functional "
+            "safety). 1 = lowest risk reduction, 4 = highest. Used for "
+            "process-industry and machinery safety; leave blank otherwise."
+        ),
+    )
     iec62304_class = models.CharField(
         max_length=4,
         choices=IEC62304_CLASS_CHOICES,
         blank=True,
         default="",
+        help_text=(
+            "Medical-device software safety class per IEC 62304. "
+            "A = no injury possible, B = non-serious injury possible, "
+            "C = death or serious injury possible. Leave blank for "
+            "non-medical software."
+        ),
     )
-    dal = models.CharField(max_length=4, choices=DAL_CHOICES, blank=True, default="")
+    dal = models.CharField(
+        max_length=4,
+        choices=DAL_CHOICES,
+        blank=True,
+        default="",
+        help_text=(
+            "Design Assurance Level per DO-178C (aviation software). "
+            "A = catastrophic failure condition, E = no effect on safety. "
+            "Leave blank for non-aviation software."
+        ),
+    )
 
     # ── document control (ISO 9001 §7.5) ─────────────────────────────
     doc_id = models.CharField(
@@ -634,3 +827,252 @@ class JiraIntegrationConfig(models.Model):
     @property
     def is_enabled(self) -> bool:
         return self.backend != "disabled" and bool(self.base_url) and bool(self.api_token)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# v0.4: project-scoped baselines (audit replay).
+#
+# Mirrors RequirementBaseline (product-scoped, v0.2) but at Project granularity
+# so an auditor can ask "show me the spec for release X of programme Y" and get
+# a frozen, immutable answer. Created once, never edited.
+# ─────────────────────────────────────────────────────────────────────────
+class ProjectBaseline(models.Model):
+    """Frozen point-in-time snapshot of a Project's Requirements + their links.
+
+    Patterned on RequirementBaseline but scoped to Project rather than Product,
+    which is the granularity release teams actually mean by "the spec at
+    release X". Use `ProjectBaseline.freeze(project, name, ...)` to create one;
+    direct `.objects.create()` would leave the snapshot tables empty.
+    """
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="baselines",
+    )
+    name = models.CharField(max_length=128)
+    notes = models.TextField(blank=True, default="")
+    version = models.ForeignKey(
+        "management.Version",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="project_baselines",
+        help_text="Optional Kiwi Version this baseline corresponds to.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_project_baselines",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        unique_together = [("project", "name")]
+
+    def __str__(self):
+        return f"ProjectBaseline {self.name} ({self.project})"
+
+    @classmethod
+    def freeze(cls, project, name, *, notes="", version=None, created_by=None):
+        """Create a baseline and populate its snapshot tables in one transaction.
+
+        Captures every Requirement currently scoped to `project` plus every
+        RequirementTestCaseLink belonging to those requirements. The
+        denormalised columns (identifier/title/status/etc.) survive deletion
+        of the source rows; the FKs use SET_NULL so the audit trail persists.
+        """
+        from django.db import transaction
+
+        with transaction.atomic():
+            baseline = cls.objects.create(
+                project=project,
+                name=name,
+                notes=notes,
+                version=version,
+                created_by=created_by,
+            )
+
+            requirements = list(
+                project.requirements.select_related(
+                    "category", "level", "source", "feature", "parent_requirement"
+                ).all()
+            )
+
+            req_snapshots = [
+                ProjectBaselineRequirementSnapshot(
+                    baseline=baseline,
+                    requirement=req,
+                    identifier=req.identifier,
+                    title=req.title,
+                    status=req.status,
+                    priority=req.priority,
+                    level_code=req.level.code if req.level_id else "",
+                    asil=req.asil,
+                    sil=req.sil,
+                    iec62304_class=req.iec62304_class,
+                    dal=req.dal,
+                    payload=_requirement_payload(req),
+                )
+                for req in requirements
+            ]
+            ProjectBaselineRequirementSnapshot.objects.bulk_create(req_snapshots)
+
+            link_rows = []
+            for req in requirements:
+                for link in req.case_links.all():
+                    link_rows.append(ProjectBaselineLinkSnapshot(
+                        baseline=baseline,
+                        requirement_identifier=req.identifier,
+                        case_id=link.case_id,
+                        link_type=link.link_type,
+                        suspect=link.suspect,
+                        payload={
+                            "coverage_notes": link.coverage_notes,
+                            "created_at": link.created_at.isoformat() if link.created_at else None,
+                        },
+                    ))
+            if link_rows:
+                ProjectBaselineLinkSnapshot.objects.bulk_create(link_rows)
+
+            return baseline
+
+
+def _requirement_payload(req):
+    """Snapshot every Requirement field as a JSON-safe dict."""
+    return {
+        "description": req.description,
+        "rationale": req.rationale,
+        "category": req.category.name if req.category_id else None,
+        "source": req.source.name if req.source_id else None,
+        "level": req.level.code if req.level_id else None,
+        "feature": req.feature.name if req.feature_id else None,
+        "parent_requirement": (
+            req.parent_requirement.identifier if req.parent_requirement_id else None
+        ),
+        "verification_method": req.verification_method,
+        "verification_exemption_reason": req.verification_exemption_reason,
+        "doc_id": req.doc_id,
+        "doc_revision": req.doc_revision,
+        "effective_date": req.effective_date.isoformat() if req.effective_date else None,
+        "change_reason": req.change_reason,
+        "jira_issue_key": req.jira_issue_key,
+        "external_refs": dict(req.external_refs or {}),
+        "updated_at": req.updated_at.isoformat() if req.updated_at else None,
+    }
+
+
+class ProjectBaselineRequirementSnapshot(models.Model):
+    """One row per Requirement frozen into a ProjectBaseline."""
+
+    baseline = models.ForeignKey(
+        ProjectBaseline,
+        on_delete=models.CASCADE,
+        related_name="requirement_snapshots",
+    )
+    requirement = models.ForeignKey(
+        Requirement,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="project_baseline_snapshots",
+    )
+    # Denormalised so the snapshot survives Requirement edits/deletion.
+    identifier = models.CharField(max_length=64)
+    title = models.CharField(max_length=255)
+    status = models.CharField(max_length=24)
+    priority = models.CharField(max_length=16, blank=True, default="")
+    level_code = models.CharField(max_length=48, blank=True, default="")
+    asil = models.CharField(max_length=4, blank=True, default="")
+    sil = models.CharField(max_length=4, blank=True, default="")
+    iec62304_class = models.CharField(max_length=4, blank=True, default="")
+    dal = models.CharField(max_length=4, blank=True, default="")
+    payload = models.JSONField(
+        default=dict,
+        help_text="Full-fidelity field dump at snapshot time.",
+    )
+
+    class Meta:
+        ordering = ["identifier"]
+        unique_together = [("baseline", "identifier")]
+
+
+class ProjectBaselineLinkSnapshot(models.Model):
+    """One row per RequirementTestCaseLink frozen into a ProjectBaseline."""
+
+    baseline = models.ForeignKey(
+        ProjectBaseline,
+        on_delete=models.CASCADE,
+        related_name="link_snapshots",
+    )
+    requirement_identifier = models.CharField(max_length=64)
+    case_id = models.IntegerField()
+    link_type = models.CharField(max_length=16)
+    suspect = models.BooleanField(default=False)
+    payload = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ["requirement_identifier", "case_id"]
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# v0.4: lightweight electronic signatures (audit-grade attestation).
+#
+# Wires up the existing `requirements.approve_requirement` permission as a
+# tamper-evident SHA-256 attestation. NOT a state-machine extension — there
+# is no `pending_approval` state, no queue, no transition gate. Each signature
+# is recorded on demand and surfaces in audit exports.
+# ─────────────────────────────────────────────────────────────────────────
+class RequirementSignature(models.Model):
+    """Tamper-evident signed attestation of a Requirement at a moment in time.
+
+    The hash is computed over (requirement_id, signed_by_id, signed_at,
+    identifier, title, description, rationale, status), so any later edit to
+    the source row invalidates the chain — auditors can re-compute the hash
+    and detect that the row no longer matches what was signed.
+    """
+
+    requirement = models.ForeignKey(
+        Requirement,
+        on_delete=models.CASCADE,
+        related_name="signatures",
+    )
+    signed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="requirement_signatures",
+    )
+    signed_at = models.DateTimeField(auto_now_add=True)
+    signature_hash = models.CharField(max_length=64, db_index=True)
+    comment = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["-signed_at"]
+        indexes = [
+            models.Index(fields=["requirement", "-signed_at"], name="tcmsreq_sig_req_idx"),
+        ]
+
+    def __str__(self):
+        return f"Signature on {self.requirement.identifier} by {self.signed_by_id}"
+
+    @staticmethod
+    def compute_hash(requirement, signed_by_id, signed_at) -> str:
+        """SHA-256 over a deterministic field projection of the requirement."""
+        import hashlib
+
+        parts = [
+            str(requirement.pk),
+            str(signed_by_id or ""),
+            signed_at.isoformat() if signed_at else "",
+            requirement.identifier or "",
+            requirement.title or "",
+            requirement.description or "",
+            requirement.rationale or "",
+            requirement.status or "",
+        ]
+        digest = hashlib.sha256("\x00".join(parts).encode("utf-8")).hexdigest()
+        return digest
+

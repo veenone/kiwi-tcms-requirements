@@ -1,12 +1,18 @@
 /* TestCase browser for the requirement link form.
  *
- * Search box feeds into Kiwi's native jsonRPC("TestCase.filter", ...)
- * with a debounce. Results render as rows; clicking picks the case.
+ * Kiwi's jsonRPC helper is an ES-module export (bundle-internal), so it
+ * isn't available as a global from outside the bundle. We POST directly
+ * to /json-rpc/ ourselves — same wire format, no dependency on Kiwi's
+ * internals being exposed.
  *
- * Depends on Kiwi's globally-loaded `jsonRPC` helper. Falls back to a
- * manual numeric input if it isn't present (e.g. standalone testing).
+ * UX:
+ *   - Search box with 250ms debounce
+ *   - Numeric query → TestCase.filter({pk: N})
+ *   - Text query → TestCase.filter({summary__icontains: ...})
+ *   - Empty query → 50 most-recent cases
+ *   - Row click → picks the case; reveals "Link" submit button
  */
-(function ($) {
+(function () {
     "use strict";
 
     var query = document.getElementById("link-picker-query");
@@ -16,30 +22,6 @@
     var submitBtn = document.getElementById("link-submit");
 
     if (!query || !results || !selected || !hiddenId || !submitBtn) { return; }
-
-    function clearChildren(node) {
-        while (node && node.firstChild) { node.removeChild(node.firstChild); }
-    }
-
-    // If Kiwi's jsonRPC helper isn't on the page, surface a manual id
-    // entry box so the form still works.
-    if (typeof jsonRPC !== "function") {
-        var wrap = query.parentNode;
-        clearChildren(wrap);
-        var fallback = document.createElement("input");
-        fallback.type = "number";
-        fallback.min = "1";
-        fallback.className = "form-control";
-        fallback.placeholder = "Enter TestCase id (e.g. 42)";
-        fallback.addEventListener("input", function () {
-            var val = parseInt(fallback.value, 10);
-            if (val > 0) {
-                pickCase({ id: val, summary: "TC-" + val, author__username: "" });
-            }
-        });
-        wrap.appendChild(fallback);
-        return;
-    }
 
     var debounceTimer = null;
 
@@ -51,21 +33,68 @@
     // Initial load — show the most recent 50.
     search();
 
+    function clearChildren(node) {
+        while (node && node.firstChild) { node.removeChild(node.firstChild); }
+    }
+
+    function csrfToken() {
+        var name = "csrftoken=";
+        var parts = (document.cookie || "").split("; ");
+        for (var i = 0; i < parts.length; i++) {
+            if (parts[i].indexOf(name) === 0) {
+                return decodeURIComponent(parts[i].substring(name.length));
+            }
+        }
+        return "";
+    }
+
+    function jsonRPC(method, params) {
+        // `.filter()` takes a dict; normalise to a one-element list as Kiwi's
+        // client does, otherwise modernrpc rejects the call.
+        var rpcParams = Array.isArray(params) ? params : [params];
+        var csrf = csrfToken();
+        return fetch("/json-rpc/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrf,
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: JSON.stringify({
+                jsonrpc: "2.0",
+                method: method,
+                params: rpcParams,
+                id: "tcmsreq-link-picker"
+            })
+        }).then(function (resp) {
+            if (!resp.ok) { throw new Error("HTTP " + resp.status); }
+            return resp.json();
+        }).then(function (payload) {
+            if (payload.error) {
+                throw new Error(payload.error.message || "JSON-RPC error");
+            }
+            return payload.result;
+        });
+    }
+
     function search() {
         var raw = (query.value || "").trim();
         var rpcQuery = {};
         if (raw) {
-            if (/^\d+$/.test(raw)) {
-                rpcQuery.pk = parseInt(raw, 10);
+            // "TC-42" or "42" → filter by pk. Otherwise substring on summary.
+            var cleaned = raw.replace(/^TC-/i, "");
+            if (/^\d+$/.test(cleaned)) {
+                rpcQuery.pk = parseInt(cleaned, 10);
             } else {
                 rpcQuery.summary__icontains = raw;
             }
         }
         renderLoading();
-        jsonRPC("TestCase.filter", rpcQuery, function (rows) {
+        jsonRPC("TestCase.filter", rpcQuery).then(function (rows) {
             renderResults(rows || []);
-        }, function () {
-            renderError();
+        }).catch(function (err) {
+            renderError(err && err.message ? err.message : "request failed");
         });
     }
 
@@ -79,11 +108,11 @@
         results.appendChild(p);
     }
 
-    function renderError() {
+    function renderError(message) {
         clearChildren(results);
         var p = document.createElement("p");
         p.className = "text-danger";
-        p.textContent = "TestCase search failed. Check the server log.";
+        p.textContent = "TestCase search failed: " + message;
         results.appendChild(p);
     }
 
@@ -103,25 +132,25 @@
         table.className = "table table-condensed table-hover link-picker-table";
 
         var thead = document.createElement("thead");
-        var tr = document.createElement("tr");
+        var headerRow = document.createElement("tr");
         ["ID", "Summary", "Author", "Automated"].forEach(function (h) {
             var th = document.createElement("th");
             th.textContent = h;
-            tr.appendChild(th);
+            headerRow.appendChild(th);
         });
-        thead.appendChild(tr);
+        thead.appendChild(headerRow);
         table.appendChild(thead);
 
         var tbody = document.createElement("tbody");
         slice.forEach(function (row) {
-            var tr2 = document.createElement("tr");
-            tr2.style.cursor = "pointer";
-            tr2.addEventListener("click", function () { pickCase(row); });
-            appendCell(tr2, "TC-" + row.id);
-            appendCell(tr2, row.summary || "—");
-            appendCell(tr2, row.author__username || row.author_username || "—");
-            appendCell(tr2, row.is_automated ? "automated" : "manual");
-            tbody.appendChild(tr2);
+            var tr = document.createElement("tr");
+            tr.style.cursor = "pointer";
+            tr.addEventListener("click", function () { pickCase(row); });
+            appendCell(tr, "TC-" + row.id);
+            appendCell(tr, row.summary || "—");
+            appendCell(tr, row.author__username || row.author_username || "—");
+            appendCell(tr, row.is_automated ? "automated" : "manual");
+            tbody.appendChild(tr);
         });
         table.appendChild(tbody);
         results.appendChild(table);
@@ -137,10 +166,10 @@
         selected.appendChild(document.createTextNode(" " + (row.summary || "")));
 
         if (row.author__username || row.author_username) {
-            var small = document.createElement("div");
-            small.className = "text-muted";
-            small.textContent = "author: " + (row.author__username || row.author_username);
-            selected.appendChild(small);
+            var meta = document.createElement("div");
+            meta.className = "text-muted";
+            meta.textContent = "author: " + (row.author__username || row.author_username);
+            selected.appendChild(meta);
         }
         submitBtn.disabled = false;
     }
@@ -150,4 +179,4 @@
         td.textContent = text == null ? "" : text;
         tr.appendChild(td);
     }
-})(typeof $ !== "undefined" ? $ : null);
+})();

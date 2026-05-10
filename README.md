@@ -19,7 +19,7 @@ Kiwi TCMS ships with a single `TestCase.requirement` CharField (max 255 characte
 
 This plugin adds that layer alongside the existing `TestCase.requirement` CharField (which is left untouched for backward-compat).
 
-## Features (v0.2.0)
+## Features
 
 ### Registry, list & detail
 
@@ -37,6 +37,10 @@ Requirement → Test case → Test plan, filterable by product / project / featu
 
 ![Traceability Sankey diagram](https://raw.githubusercontent.com/veenone/kiwi-tcms-requirements/main/docs/screenshots/03-traceability.png)
 
+A second Sankey view added in **v0.4.1** flows **source document → requirement → test case** so you can see at a glance which controlled documents (RFPs, specifications, brand guidelines) are actually exercised by tests. Requirements without a source document fall under a *(no source document)* node so the gap is obvious.
+
+![Sankey grouped by source document](https://raw.githubusercontent.com/veenone/kiwi-tcms-requirements/main/docs/screenshots/10-traceability-document.png)
+
 ### Coverage dashboard
 
 Coverage %, orphan requirements, suspect links, plus donuts and bars for status / priority / level / category breakdown. ASIL / DAL / IEC 62304 safety-distribution chart shown only when at least one requirement has safety classification.
@@ -44,6 +48,22 @@ Coverage %, orphan requirements, suspect links, plus donuts and bars for status 
 ![Dashboard with charts](https://raw.githubusercontent.com/veenone/kiwi-tcms-requirements/main/docs/screenshots/02-dashboard.png)
 
 Export the dashboard snapshot to DOCX or PDF directly from the page header.
+
+### Programmes / projects (v0.3.0)
+
+A `Project` is a programme record scoped to a Kiwi `Product`. Each project carries status, owner, stakeholders, target / actual end dates, JIRA project key, an open-ended `external_refs` JSON map, and an M2M to Kiwi `TestPlan`s for in-scope test work. The list view is a card grid with status pills, owner, dates, and live coverage% per project.
+
+![Projects card grid](https://raw.githubusercontent.com/veenone/kiwi-tcms-requirements/main/docs/screenshots/11-projects-list.png)
+
+The detail page surfaces programme metadata, a project-scoped coverage donut + orphan / suspect counts, the linked plans, the requirements list, a project-scoped mini-Sankey, and one-click DOCX / PDF exports for just that project. Create / edit / delete is in-page (no admin round-trip needed).
+
+![Project detail page](https://raw.githubusercontent.com/veenone/kiwi-tcms-requirements/main/docs/screenshots/12-project-detail.png)
+
+### Document fields & dynamic custom fields (v0.4.0)
+
+Each requirement now carries optional `document_file_name` and `document_title` fields under the *Taxonomy* fieldset, capturing the controlled document the requirement was sourced from (a `RequirementSource` is the catalog entry; these fields are the per-requirement provenance). Both fields round-trip through CSV / XLSX import + export and are first-class filterable columns.
+
+For organisation-specific metadata that doesn't warrant a schema migration, admins can register `CustomFieldDefinition` rows from Django admin (text / int / date / choice / bool). Each definition shows as a real form input on the requirement page and persists to the existing `Requirement.external_refs` JSON column — so adding a field never costs a migration.
 
 ### Authoring
 
@@ -92,6 +112,62 @@ The package exposes a `kiwitcms.plugins` entry point; Kiwi discovers it automati
 ```
 
 That's it. The plugin registers its menu entries, admin tabs, and middleware in `apps.py::ready()` — no manual `INSTALLED_APPS` or `MIDDLEWARE` editing required.
+
+### Sankey-in-export extras (optional)
+
+Embedding the live-rendered Sankey into DOCX / PDF exports needs `svglib` plus `pycairo` so reportlab's `renderPM` can rasterise the SVG to PNG. PDF exports embed the SVG natively (no PNG needed) and work without these extras — only DOCX exports degrade to *table-only* when they're missing.
+
+`pycairo` is a binding around the system **cairo** library, so install the OS package first, then the Python wheels:
+
+**Linux (Debian / Ubuntu / WSL):**
+
+```bash
+sudo apt-get update
+sudo apt-get install -y libcairo2-dev pkg-config python3-dev
+pip install "kiwitcms-requirements[diagrams]"
+```
+
+**Linux (Fedora / RHEL / Rocky):**
+
+```bash
+sudo dnf install -y cairo-devel pkgconf-pkg-config python3-devel
+pip install "kiwitcms-requirements[diagrams]"
+```
+
+**Linux (Alpine):**
+
+```bash
+sudo apk add cairo-dev pkgconf python3-dev build-base
+pip install "kiwitcms-requirements[diagrams]"
+```
+
+**Windows:**
+
+`pycairo` ships pre-built wheels for CPython 3.9+ on Windows x64, so no system install is needed in most cases:
+
+```powershell
+pip install "kiwitcms-requirements[diagrams]"
+```
+
+If pip can't find a wheel (PyPy, ARM64, or older CPython), fall back to the unofficial Christoph Gohlke wheels:
+
+```powershell
+# Replace cp311 / win_amd64 with your CPython tag.
+pip install https://download.lfd.uci.edu/pythonlibs/archived/pycairo-1.26.0-cp311-cp311-win_amd64.whl
+pip install "kiwitcms-requirements[diagrams]"
+```
+
+For a fully native Windows build (advanced) you'd need MSVC and the [GTK runtime](https://gtk-rs.org/gtk4-rs/stable/latest/book/installation_windows.html) for cairo headers — wheels are strongly preferred.
+
+**Verifying the install:**
+
+```bash
+python -c "from svglib.svglib import svg2rlg; from reportlab.graphics import renderPM; print('OK')"
+```
+
+If you see `RenderPMError: cannot import desired renderPM backend rlPyCairo`, cairo isn't on the loader path; revisit the OS-package step.
+
+**Skip the extras altogether** if you only need PDF exports with the diagram, or DOCX exports without — the plugin gracefully degrades and logs `svglib or reportlab.renderPM unavailable` to `tcms_requirements` logger when it falls back.
 
 ## Level profiles
 
@@ -151,7 +227,7 @@ The mapping merges over the defaults — only declare what you want to change. `
 
 ## Demo data
 
-Seeds 12 demo requirements across 3 features with a `stakeholder → system → software` decomposition chain and mixed link types so the Sankey and dashboard have something to show:
+Seeds 12 demo requirements across 3 features with a `stakeholder → system → software` decomposition chain, mixed link types, and realistic source-document titles so both Sankey views and the dashboard have something to show:
 
 ```bash
 ./manage.py seed_demo_requirements
@@ -161,6 +237,12 @@ Flags:
 - `--product "Infotainment ECU"` — scope under a specific product (defaults to first)
 - `--cases 8` — number of TestCases to link (default 8)
 - `--flush` — delete previous `DEMO-*` rows before re-seeding
+
+For an end-to-end demo with projects, baselines, and custom fields wired up too:
+
+```bash
+./manage.py seed_demo_all
+```
 
 ## Permissions
 
@@ -179,8 +261,11 @@ Runtime (installed automatically):
 - markdown, requests
 - openpyxl (XLSX import/templates)
 - python-docx (DOCX reports)
-- reportlab (PDF reports)
-- svglib, Pillow (Sankey → DOCX/PDF image embedding)
+- reportlab (PDF reports — also embeds Sankey directly into PDF, no system deps)
+
+Optional `[diagrams]` extra (`pip install "kiwitcms-requirements[diagrams]"`):
+- svglib, Pillow — for embedding the Sankey image into **DOCX** exports
+- pycairo (transitive) — needs system **cairo** headers; see the *Sankey-in-export extras* section above for the exact OS package per platform.
 
 ## Running the test suite
 

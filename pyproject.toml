@@ -1,6 +1,6 @@
 [project]
 name = "kiwitcms-requirements"
-version = "0.2.0"
+version = "0.4.3"
 description = "Requirements management and traceability plugin for Kiwi TCMS: registry of requirements, M2M trace to test cases, Sankey traceability, coverage dashboard with charts, JIRA-ready CSV export, XLSX/DOCX/PDF reports, ASPICE / ISO 9001 support."
 readme = "README.md"
 license = "GPL-2.0-or-later"
@@ -14,8 +14,6 @@ dependencies = [
     "openpyxl>=3.1",
     "python-docx>=1.1",
     "reportlab>=4.0",
-    "svglib>=1.5",
-    "Pillow>=10.0",
 ]
 authors = [{ name = "Achmad Fienan Rahardianto", email = "veenone@gmail.com" }]
 classifiers = [
@@ -43,7 +41,19 @@ keywords = [
 ]
 
 [project.optional-dependencies]
-diagram = ["networkx>=3.0"]
+# Embedding the Sankey diagram inside DOCX / PDF exports needs these
+# extras. Without them PDF still embeds the SVG natively, but DOCX
+# falls back to a table-only report. Install with:
+#     pip install "kiwitcms-requirements[diagrams]"
+# rlPyCairo pulls in pycairo, which needs the system `cairo` library
+# (libcairo2-dev on Debian/Ubuntu, cairo-devel on Fedora, prebuilt
+# wheel on Windows). See README → "Sankey-in-export extras".
+diagrams = [
+    "svglib>=1.5",
+    "Pillow>=10.0",
+    "rlPyCairo>=0.2",
+]
+analytics = ["networkx>=3.0"]
 dev = [
     "build>=1.0",
     "twine>=4.0",

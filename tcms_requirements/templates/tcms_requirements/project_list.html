@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Projects" %}{% endblock %}
+
+{% block contents %}
+<div class="container-fluid" id="requirements-project-list">
+  <div class="page-header">
+    <h1>
+      {% trans "Projects" %}
+      <small>{{ cards|length }} {% trans "total" %}</small>
+    </h1>
+    <div class="requirements-page-toolbar">
+      <a href="{% url 'requirement-project-new' %}" class="btn btn-primary">
+        <i class="fa fa-plus"></i> {% trans "New project" %}
+      </a>
+      <div class="requirements-toolbar-spacer"></div>
+      <div class="btn-group">
+        <a href="{% url 'requirement-list' %}" class="btn btn-default">
+          <i class="fa fa-list"></i> {% trans "Requirements" %}
+        </a>
+        <a href="{% url 'requirement-dashboard' %}" class="btn btn-default">
+          <i class="fa fa-bar-chart"></i> {% trans "Dashboard" %}
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <form method="get" class="requirements-filters">
+    <div class="form-group">
+      <label for="status">{% trans "Status" %}</label>
+      <select name="status" id="status" class="form-control">
+        <option value="">{% trans "— any —" %}</option>
+        {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if active_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="requirements-filters-actions">
+      <button type="submit" class="btn btn-primary">{% trans "Apply" %}</button>
+      <a href="{% url 'requirement-project-list' %}" class="btn btn-link">{% trans "Reset" %}</a>
+    </div>
+  </form>
+
+  {% if cards %}
+  <div class="requirements-kanban-board">
+    {% for column in columns %}
+    <section class="requirements-kanban-column" data-status="{{ column.key }}">
+      <header class="requirements-kanban-column-heading">
+        <span>
+          <span class="label requirements-project-pill requirements-project-pill-{{ column.key }}">
+            {{ column.label }}
+          </span>
+        </span>
+        <span class="requirements-kanban-column-count">{{ column.cards|length }}</span>
+      </header>
+      <div class="requirements-kanban-cards">
+        {% for card in column.cards %}
+          {% with project=card.project %}
+          <div class="panel panel-default requirements-project-card requirements-project-status-{{ project.status }}">
+            <div class="panel-heading">
+              <h3 class="panel-title">
+                <a href="{% url 'requirement-project-get' project.pk %}">{{ project.name }}</a>
+              </h3>
+              <small class="text-muted">{{ project.product.name }}{% if project.code %} · <code>{{ project.code }}</code>{% endif %}</small>
+            </div>
+            <div class="panel-body">
+              <dl class="dl-horizontal requirements-project-meta">
+                <dt>{% trans "Owner" %}</dt>
+                <dd>{% if project.owner %}{{ project.owner.get_full_name|default:project.owner.username }}{% else %}<em class="text-muted">{% trans "—" %}</em>{% endif %}</dd>
+                <dt>{% trans "Plans" %}</dt>
+                <dd>{{ project.test_plans.count }}</dd>
+                <dt>{% trans "Coverage" %}</dt>
+                <dd>
+                  <strong>{{ card.coverage.percent }}%</strong>
+                  <small class="text-muted">({{ card.coverage.linked }} / {{ card.coverage.total }})</small>
+                </dd>
+                {% if card.orphans or card.suspects %}
+                <dt>{% trans "Risk" %}</dt>
+                <dd>
+                  {% if card.orphans %}<span class="label label-warning requirements-pill">{{ card.orphans }} {% trans "orphan" %}</span>{% endif %}
+                  {% if card.suspects %}<span class="label label-danger requirements-pill">{{ card.suspects }} {% trans "suspect" %}</span>{% endif %}
+                </dd>
+                {% endif %}
+                {% if project.start_date or project.target_end_date %}
+                <dt>{% trans "Dates" %}</dt>
+                <dd>
+                  <small>
+                    {{ project.start_date|date:"Y-m-d"|default:"—" }}
+                    →
+                    {{ project.target_end_date|date:"Y-m-d"|default:"—" }}
+                  </small>
+                </dd>
+                {% endif %}
+              </dl>
+            </div>
+            <div class="panel-footer">
+              <a href="{% url 'requirement-project-get' project.pk %}" class="btn btn-default btn-sm">
+                <i class="fa fa-folder-open"></i> {% trans "Open" %}
+              </a>
+              <a href="{% url 'requirement-list' %}?project={{ project.pk }}" class="btn btn-link btn-sm">
+                {% trans "Filter requirements" %}
+              </a>
+            </div>
+          </div>
+          {% endwith %}
+        {% empty %}
+          <div class="requirements-kanban-empty">{% trans "No projects" %}</div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="requirements-blank-slate">
+    <i class="pficon pficon-folder-close"></i>
+    <h3>{% trans "No projects yet" %}</h3>
+    <p>{% trans "Create your first programme to group features and requirements." %}</p>
+    <a href="{% url 'requirement-project-new' %}" class="btn btn-primary">
+      <i class="fa fa-plus"></i> {% trans "New project" %}
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+<link rel="stylesheet" href="{% static 'tcms_requirements/css/requirements.css' %}">
+{% endblock %}
